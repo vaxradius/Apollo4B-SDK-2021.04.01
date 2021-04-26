@@ -1,0 +1,25 @@
+//
+// To use with J-Link Commander from a Command Prompt.
+//  jlink -CommanderScript jlink-update-patch.txt
+//
+
+//connect to device
+//device AMAP42KK-KBR-nbl
+device AMAP42KK-KBR-sblc000
+si SWD
+speed 1000
+r
+sleep 10
+
+loadbin am_patch_ota.bin 0xFC000
+// Set up OTA Descriptor at 0xFE000 - last page in flash
+w4 0xFE000 0xFC003
+w4 0xFE004 0xFFFFFFFF
+// Set up OTAPointer
+w4 0x40020264 0xFE001
+// Reset
+w4 0x40000004 0x1B
+sleep 2000
+connect
+mem32 0xFE000, 1
+qc

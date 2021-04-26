@@ -1,0 +1,22 @@
+//connect to device
+//device AMAP42KK-KBR-nbl
+device AMAP42KK-KBR-sblc000
+si SWD
+speed 1000
+r
+sleep 10
+
+// download image to 0x80000 - **** Change this based on device flashmap ****
+loadbin sbl.bin 0x80000     //load the SBL binary into temp location in flash
+// Set up OTA Descriptor at 0xF0000 // **** Change this based on device flashmap ****
+w4 0xF0000 0x80003
+w4 0xF0004 0xFFFFFFFF
+// Set up OTAPointer
+w4 0x40020264 0xF0003
+// Reset POI
+w4 0x40000004 0x1B
+
+sleep 50
+
+// quit
+qc

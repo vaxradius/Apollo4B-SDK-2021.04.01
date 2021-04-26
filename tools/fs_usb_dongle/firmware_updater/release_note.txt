@@ -1,0 +1,138 @@
+2020-08-11 Release V8
+SHA-1: 5b83f9b66b838b4822c1daba3b52ca65c13fda2b
+
+Added workaround for D+ pulse causing disconnect event.
+
+===============================================================================
+
+2020-07-31 Release V7
+SHA-1: 83f8c56fd210de63b273a2ff49ec507352edeca6
+
+DONOT re-enumerate USB when AP4 plug in/out(From IACT's requirement)
+Fixed the reported issue on running kermit_transfer on macbook
+Minor update for firmware version display in firmware_updater.py, versioned 1.3
+Resolved the incorrect detection of SPI transmission when apollo4 plugged.
+
+===============================================================================
+
+2020-07-17 Release V6
+SHA-1: e2c755aee3500e2ae38d912f7c5a8193c0949162
+
+prevent USBH from sending data when busy doing setline/getline
+--fixed the issue when run kermit_transfer on macOS
+
+===============================================================================
+
+2020-07-14 Release V5
+SHA-1: 7ff362b482287ee73e1b0265eab8c92908e86c1f
+
+Minor update on firmware_updater.exe, versioned 1.3. Added factory default version handling.
+(Factory default firmware may return 0xffffffff for MCU2 version when read, display same version as MCU1 with "(factory default)" instead of displaying "4294967295")
+
+===============================================================================
+
+2020-07-07 Release V5
+SHA-1: 4c966516a058d93a11d45efeb6b09587eb1d9cac
+
+Fixed MacOS loopback test issue. MacOS tends to break longer data packet into smaller ones, this may cause Dongle host TX and RX at same time with Apollo4.
+In such case, STM USB stack does not handle state machine correctly, added state protection code to avoid the issue.
+Improved SPI communication stability.
+Revised test script ap4_cdc_loopback_test.py for MacOS case.
+Revised version number to all be displayed in decimal.
+
+
+Known issues:
+•	Get line commands
+    Get line commands from PC are terminated at dongle, and not relayed to Apollo4. e.g. setting baudrate information will not be bridged to Apollo4.
+•	Half duplex communication mode.
+    The inter-MCU SPI communication on the dongle is half-duplex, and hence the expected USB traffic is also half-duplex. 
+
+===============================================================================
+
+2020-06-29 Release V4
+SHA-1: de37c7c0f6d0f8a52f804b510fab7a4d697f500f
+
+Apollo4 connection/disconnection status reported to PC host.
+First 1.5sec after plugged into PC host, dongle will check for Apollo4 status. If not connected, dongle will enumerate as STM VCP device.
+Otherwise, dongle will use Apollo4's descriptor information for enumeration.
+Revised test and firmware_updater scripts to handle com port close when exception happens.
+Added firmware reading command support in firmware_updater.exe
+
+Known issues:
+•	Get line commands
+    Get line commands from PC are terminated at dongle, and not relayed to Apollo4. e.g. setting baudrate information will not be bridged to Apollo4.
+•	Half duplex communication mode.
+    The inter-MCU SPI communication on the dongle is half-duplex, and hence the expected USB traffic is also half-duplex. 
+
+===============================================================================
+
+2020-06-19 Release V3
+SHA-1: cf4fd175df3bfd7d33666516f4f99ab86b975a9d
+
+Updated MCU2 to allow continuous working when Apollo4 experienced a reset.
+Improve stability:
+    Removed HAL_Init() and SystemClock_Config() from application firmware and only call them in the bootloader.
+    Prolonged MCU2 reset release time.
+    Removed blocking code from MCU1 error handling.
+Enabled set line command bridging.
+
+Known issues:
+•	Status update of Apollo4 USB
+    The dongle does not report the status of a connection. If during operation, Apollo4 is unplugged from the dongle, leaving only dongle connected to the PC, the PC software may not know about this disconnect event.
+•	Get line commands
+    Get line commands from PC are terminated at dongle, and not relayed to Apollo4. e.g. setting baudrate information will not be bridged to Apollo4.
+•	Half duplex communication mode.
+    The inter-MCU SPI communication on the dongle is half-duplex, and hence the expected USB traffic is also half-duplex. 
+•	Apollo4 device info not reported to PC (e.g. PID/VID)
+    If PC software is checking PID/VID information of a device, it will only read PID/VID information of the dongle
+•	VCP exception not handled
+    If there is any unexpected VCP stop event, user may have to unplug and plug back the dongle to recover from the event.
+    During our test, such "unexpected event" only happens when a key interrupt (ctrl+c) happens during test script running. If in user’s use case, there is no such event, there should not be any issues.
+
+===============================================================================
+
+2020-06-18 Release V2
+SHA-1: 5ef43de74498494ce4cfe04186daa52ddaa1d747
+
+Fixed an issue when data up streaming.
+Enhanced bootloader robustness against unexpected power loss.
+    Added MCU option to bootloader flag page
+
+Known issues:
+•	Status update of Apollo4 USB
+    The dongle does not report the status of a connection. If during operation, Apollo4 is unplugged from the dongle, leaving only dongle connected to the PC, the PC software may not know about this disconnect event.
+•	Set/Get line commands
+    Set/Get line commands from PC are terminated at dongle, and not relayed to Apollo4. e.g. setting baudrate information will not be bridged to Apollo4.
+•	Half duplex communication mode.
+    The inter-MCU SPI communication on the dongle is half-duplex, and hence the expected USB traffic is also half-duplex. 
+•	Apollo4 device info not reported to PC (e.g. PID/VID)
+    If PC software is checking PID/VID information of a device, it will only read PID/VID information of the dongle
+•	VCP exception not handled
+    If there is any unexpected VCP stop event, user may have to unplug and plug back the dongle to recover from the event.
+    During our test, such "unexpected event" only happens when a key interrupt (ctrl+c) happens during test script running. If in user’s use case, there is no such event, there should not be any issues.
+
+===============================================================================
+
+2020-06-16 Release V1
+SHA-1: 3642fdcd3c63194499aff99497864546e04a17fd
+
+Initial release
+Bridge function working.
+Tested data loopback, file download and upload, log upload, all passed.
+vDFU enabled.
+
+Known issues:
+•	Status update of Apollo4 USB
+    The dongle does not report the status of a connection. If during operation, Apollo4 is unplugged from the dongle, leaving only dongle connected to the PC, the PC software may not know about this disconnect event.
+•	Set/Get line commands
+    Set/Get line commands from PC are terminated at dongle, and not relayed to Apollo4. e.g. setting baudrate information will not be bridged to Apollo4.
+•	Half duplex communication mode.
+    The inter-MCU SPI communication on the dongle is half-duplex, and hence the expected USB traffic is also half-duplex. 
+•	Apollo4 device info not reported to PC (e.g. PID/VID)
+    If PC software is checking PID/VID information of a device, it will only read PID/VID information of the dongle
+•	VCP exception not handled
+    If there is any unexpected VCP stop event, user may have to unplug and plug back the dongle to recover from the event.
+    During our test, such "unexpected event" only happens when a key interrupt (ctrl+c) happens during test script running. If in user’s use case, there is no such event, there should not be any issues.
+
+
+

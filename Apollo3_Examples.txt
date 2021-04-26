@@ -1,0 +1,3463 @@
+The dtm (direct test mode) module can be ported to general BLE example of Apollo4 by following the steps.
+
+1. Modify the config-template.ini of project locating in boards/(YOUR_BOARD)/examples/ble/(YOUR_PROJECT):
+    1.1 Add /dtm_module to the include path
+         Include = src
+                  ...
+                  %(SoftwareRoot)s/ambiq_ble/apps/dtm_module
+
+    1.2 Add /dtm_module to the VPath
+         VPath = src
+                  ...
+                  %(SoftwareRoot)s/ambiq_ble/apps/dtm_module
+
+    1.3 Add dtm_main.c to VPath Sources
+         Sources =
+                  ...
+                  dtm_main.c
+
+2. Edit the radio_task.c:
+    2.1 Include the necessary .h files
+         #include "dtm_api.h"
+
+    2.2 Call the dtm_mode entrance api in RadioTask():
+         void RadioTask(void *pvParameters)
+         {
+          ...
+          while(1)
+          {
+          #if defined(ENABLE_DTM_MODE_FEATURE) && (ENABLE_DTM_MODE_FEATURE == 1)
+               if ( g_bDtmModeRunning )
+               {
+                   reset_ble_and_enter_dtm();
+                   dtm_process();
+               }
+          #endif
+
+               wsfOsDispatcher();
+          }
+         }
+
+3. Edit the ble_freertos_xx.c, for example, ble_freertos_amota.c:
+    3.1 Include the necessary .h files
+          #include "dtm_api.h"
+
+    3.2 Design avaiable interface calling ui_switch_to_dtm() to switch to DTM from the current application. 
+          *If the button on your board is used to switch, you can refer to button_init.c to define the ISR of GPIO and register the handler of button action.
+          *Then initialize the gpio before task running.
+          int main(void)
+          {
+          ...
+          #if defined(AM_PART_APOLLO4B)
+          #if defined(ENABLE_DTM_MODE_FEATURE) && (ENABLE_DTM_MODE_FEATURE == 1)
+              dtm_enter_button_init();
+          #endif
+          #endif
+          
+           run_tasks();
+           ...
+          }
+
+4. Implement the serial interface functions defined in dtm_api.h in your application. If UART is used for the serial communication, you can refer to uart_ble_bridge.c locating in boards/(YOUR_BOARD)/examples/ble/uart_ble_bridge/src.
+    void serial_interface_init(void);
+    void serial_interface_deinit(void);
+    void serial_data_read(uint8_t* pui8Data, uint32_t* ui32Length);
+    void serial_data_write(uint8_t* pui8Data, uint32_t ui32Length);
+    void serial_irq_enable(void);
+    void serial_irq_disable(void);
+    void serial_task(void);
+
+Note:
+1. If GPIO button is used to switch, be careful to define the ISR of GPIO to avoid the conflit between different GPIO you use in the same application. 
+
+Name:
+=====
+ i2s_loopback
+
+
+Description:
+============
+ An example to show basic I2S operation.
+
+
+Purpose:
+========
+This example enables the I2S interfaces to loop back data from
+each other.  Either I2S0 or I2S1 can be selected as the master.
+The required pin connections are as follows.
+Apollo4 (BGA):
+J9-2 I2S1DIN  to J9-16 I2S0DOUT
+J9-4 I2S1WS   to J9-14 I2S0WS
+J9-6 I2S1DOUT to J9-12 I2S0DIN
+J9-8 I2S1CLK  to J11-7 I2S0CK
+
+Apollo4 Blue (SIP):
+J9-1 I2S1DIN  to J9-8  I2S0DOUT
+J9-2 I2S1WS   to J9-7  I2S0WS
+J9-3 I2S1DOUT to J9-6  I2S0DIN
+J9-4 I2S1CLK  to J11-7 I2S0CK
+
+Printing takes place over the ITM at 1M Baud.
+
+
+
+******************************************************************************
+
+
+Name:
+=====
+ pdm_fft
+
+
+Description:
+============
+ An example to show basic PDM operation.
+
+
+Purpose:
+========
+This example enables the PDM interface to record audio signals from an
+external microphone. The required pin connections are:
+
+Printing takes place over the ITM at 1M Baud.
+
+GPIO 50 - PDM0 CLK
+GPIO 51 - PDM0 DATA
+
+GPIO 52 - PDM1 CLK
+GPIO 53 - PDM1 DATA
+
+GPIO 54 - PDM2 CLK
+GPIO 55 - PDM2 DATA
+
+GPIO 56 - PDM3 CLK
+GPIO 57 - PDM3 DATA
+
+
+******************************************************************************
+
+
+Name:
+=====
+ nemadc_4layer
+
+
+Description:
+============
+ NemaDC example.
+
+
+This example demonstrates DC 4 layers overlay with global alpha blending.
+* Layer0 - Red image
+* Layer1 - Green image
+* Layer2 - Blue image
+* Layer3 - Yellow image
+Global alpha value can be changed in layer*.alpha. Blendmode can be changed
+in layer*.blendmode.
+
+This example can work at two different SPI interfaces. When defined ENABLE_SPI4
+in preprocessor defined symbols, this example drives panel through SPI4 interface.
+When defined ENABLE_QSPI in preprocessor defined symbols, this example drives
+panel through QSPI interface.
+
+
+******************************************************************************
+
+
+Name:
+=====
+ nemagfx_balls_bench
+
+
+Description:
+============
+ NemaGFX example.
+
+This example created some random balls with alpha blending on the screen,
+use
+#define MAX_CIRCLE_NUM               (15)
+to choose how many balls rendering on the screen
+
+AM_DEBUG_PRINTF
+If enabled, debug messages will be sent over ITM.
+
+
+******************************************************************************
+
+
+Name:
+=====
+ nemagfx_benchmarks
+
+
+Description:
+============
+ NemaGFX example.
+
+
+this example demonstrate the Nema GPU and CPU performance use Nema GPU's
+basic characteristics, we should care about the FPS after each individual
+test.
+need a timer to get the accurate time past.
+
+AM_DEBUG_PRINTF
+If enabled, debug messages will be sent over ITM.
+
+
+******************************************************************************
+
+
+Name:
+=====
+ nemagfx_performance_test
+
+
+Description:
+============
+ NemaGFX performace test example.
+
+
+This example put texture or framebuffer at PSRAM and run various baseline
+test of GPU. The following operations are included:copy, blend, scale,
+rotate, scale+rotate.
+
+HOW TO USE: Compile->Download->Collect SWO output->Copy results to a file
+->rename this file as *.csv -> open by Excel -> save it as *.xlsx
+
+Note: Make sure the PSRAM is connected before running this test.
+
+
+******************************************************************************
+
+
+Name:
+=====
+ nemagfx_transition_effects
+
+
+Description:
+============
+ Example of the app running under NemaGFX guage examples
+
+this example use one frame buffer demonstrate two picture trasition effect,
+with Nema GPU support, the effect include
+NEMA_TRANS_LINEAR_H,
+NEMA_TRANS_CUBE_H,
+NEMA_TRANS_INNERCUBE_H,
+NEMA_TRANS_STACK_H,
+NEMA_TRANS_LINEAR_V,
+NEMA_TRANS_CUBE_V,
+NEMA_TRANS_INNERCUBE_V,
+NEMA_TRANS_STACK_V,
+NEMA_TRANS_FADE,
+NEMA_TRANS_FADE_ZOOM,
+NEMA_TRANS_MAX,
+NEMA_TRANS_NONE
+
+AM_DEBUG_PRINTF
+If enabled, debug messages will be sent over ITM.
+
+
+******************************************************************************
+
+
+Name:
+=====
+ nemagfx_watchface
+
+
+Description:
+============
+ NemaGFX example.
+
+this example uses two frame buffer demonstrate a digital Quartz clock, with
+Nema GPU support, the shader effect continue shows while timer passing, the
+function needs a timer to get the accurate time past.
+AM_DEBUG_PRINTF
+If enabled, debug messages will be sent over ITM.
+
+
+******************************************************************************
+
+
+Name:
+=====
+ nemagfx_watch_gui
+
+
+Description:
+============
+ Example of the app running under NemaGFX watch_gui examples
+
+of its GuiBuilder.
+this problem is created by Nema guiBuilder, we simulated the touch event by
+always touched and moving left to right and then right to left reciprocating.
+
+AM_DEBUG_PRINTF
+If enabled, debug messages will be sent over ITM.
+
+
+******************************************************************************
+
+
+Name:
+=====
+ info_dump
+
+
+Description:
+============
+ A simple program to dump the INFOspace to SWO
+
+
+
+
+******************************************************************************
+
+
+Name:
+=====
+ mram_program
+
+
+Description:
+============
+ MRAM programming example.
+
+
+Purpose:
+========
+This example shows how to modify the internal MRAM using HAL
+MRAM helper functions.
+
+This example works on the portion of the MRAM at the 1MB boundary.
+
+Printing takes place over the ITM at 1M Baud.
+
+
+
+******************************************************************************
+
+
+Name:
+=====
+ binary_counter
+
+
+Description:
+============
+ Example that displays the timer count on the LEDs.
+
+
+Purpose:
+========
+This example increments a variable on every timer interrupt. The global
+variable is used to set the state of the LEDs. The example sleeps otherwise.
+
+Printing takes place over the ITM at 1M Baud.
+
+
+
+******************************************************************************
+
+
+Name:
+=====
+ hello_world
+
+
+Description:
+============
+ A simple "Hello World" example.
+
+
+This example prints a "Hello World" message with some device info
+over SWO at 1M baud. To see the output of this program, run AMFlash,
+and configure the console for SWO. The example sleeps after it is done
+printing.
+
+
+******************************************************************************
+
+
+Name:
+=====
+ hp_mode_192mhz
+
+
+Description:
+============
+ Example demonstrates the usage of High Performance Mode(192MHz) HAL.
+
+
+Purpose:
+========
+This example sets the Apollo4 into Low Power Mode(96MHz), then
+times a calculation of prime numbers, displaying the elapsed time. Next,
+it switches the Apollo4 into High Performance Mode(192MHz), performs the
+the same calculation, then displays the elapsed time, which should be
+roughly 50% of Low Power Mode.
+
+Printing takes place over the ITM at 1M Baud.
+
+
+
+******************************************************************************
+
+
+Name:
+=====
+ rtc_print
+
+
+Description:
+============
+ Example using the internal RTC.
+
+
+This example demonstrates how to interface with the RTC and prints the
+time over SWO.
+
+The example works by configuring a timer interrupt which will periodically
+wake the core from deep sleep. After every interrupt, it prints the current
+RTC time.
+
+
+
+******************************************************************************
+
+
+Name:
+=====
+ stimer
+
+
+Description:
+============
+ Example using a stimer with interrupts.
+
+
+Purpose:
+========
+This example demonstrates how to setup the stimer for counting and
+interrupts. It toggles LED 0 to 4 every interrupt, which is set for 1 sec.
+
+Printing takes place over the ITM at 1M Baud.
+
+
+
+******************************************************************************
+
+
+Name:
+=====
+ watchdog
+
+
+Description:
+============
+ Example of a basic configuration of the watchdog.
+
+
+Purpose:
+========
+This example shows a simple configuration of the watchdog. It will print
+a banner message, configure the watchdog for both interrupt and reset
+generation, and immediately start the watchdog timer.
+The watchdog ISR provided will 'pet' the watchdog four times, printing
+a notification message from the ISR each time.
+On the fifth interrupt, the watchdog will not be pet, so the 'reset'
+action will eventually be allowed to occur.
+On the sixth timeout event, the WDT should issue a system reset, and the
+program should start over from the beginning.
+
+Printing takes place over the ITM at 1M Baud.
+
+
+
+******************************************************************************
+
+
+Name:
+=====
+ ble_freertos_fit_lp
+
+
+Description:
+============
+ ARM Cordio BLE - Fit Application Example.
+
+
+Purpose:
+========
+This example implements a BLE heart rate sensor within the FreeRTOS
+framework. To minimize power usage, this application is compiled without
+debug printing by default (the "lp" version of this example excludes
+them by default).
+
+Additional Information:
+=======================
+To enable debug printing, add the following project-level macro definitions.
+
+AM_DEBUG_PRINTF
+WSF_TRACE_ENABLED=1
+
+When defined, debug messages will be sent over ITM/SWO at 1M Baud.
+
+Note that when these macros are defined, the device will never achieve deep
+sleep, only normal sleep, due to the ITM (and thus the HFRC) being enabled.
+
+
+******************************************************************************
+
+
+Name:
+=====
+ coremark
+
+
+Description:
+============
+ EEMBC COREMARK test.
+
+
+Purpose:
+========
+This example runs the official EEMBC COREMARK test.
+
+The Coremark run begins by first outputing a banner (to the UART)
+indicating that it has started.  It then does a complete disable
+and power down of the UART for accurate power measuring during the run.
+
+The Coremkark implementation performs 2000 ITERATIONS (specified in
+ambiq_core_config.h), which is plenty of time for correct operation
+of the benchmark.
+
+Once the run has completed, the UART is reenabled and the results printed.
+
+Text is output to the UART at 115,200 BAUD, 8 bit, no parity.
+Please note that text end-of-line is a newline (LF) character only.
+Therefore, the UART terminal must be set to simulate a CR/LF.
+
+
+******************************************************************************
+
+
+Name:
+=====
+ deepsleep
+
+
+Description:
+============
+ Example demonstrating how to enter deepsleep.
+
+
+Purpose:
+========
+This example configures the device to go into a deep sleep mode. Once in
+sleep mode the device has no ability to wake up. This example is merely to
+provide the opportunity to measure deepsleep current without interrupts
+interfering with the measurement.
+
+The example begins by printing out a banner announcement message through
+the UART, which is then completely disabled for the remainder of execution.
+
+Text is output to the UART at 115,200 BAUD, 8 bit, no parity.
+Please note that text end-of-line is a newline (LF) character only.
+Therefore, the UART terminal must be set to simulate a CR/LF.
+
+
+******************************************************************************
+
+
+Name:
+=====
+ deepsleep_wake
+
+
+Description:
+============
+ Example that goes to deepsleep and wakes from either the RTC or GPIO.
+
+
+Purpose:
+========
+This example configures the device to go into a deep sleep mode. Once in
+deep sleep the RTC peripheral will wake the device every second, check to
+see if 5 seconds has elapsed and then toggle LED1.
+
+Alternatively, it will awake when button 0 is pressed and toggle LED0.
+
+The example begins by printing out a banner annoucement message through
+the UART, which is then completely disabled for the remainder of execution.
+
+Text is output to the UART at 115,200 BAUD, 8 bit, no parity.
+Please note that text end-of-line is a newline (LF) character only.
+Therefore, the UART terminal must be set to simulate a CR/LF.
+
+
+******************************************************************************
+
+
+Name:
+=====
+ audadc_lpmode0_dma
+
+
+Description:
+============
+ This example takes samples with the AUDADC at high-speed using DMA.
+
+
+Purpose:
+========
+This example shows the CTIMER-A3 triggering repeated samples of an external
+input at 1.2Msps in LPMODE0.  The example uses the CTIMER-A3 to trigger
+AUDADC sampling.  Each data point is 128 sample average and is transferred
+from the AUDADC FIFO into an SRAM buffer using DMA.
+
+Printing takes place over the ITM at 1M Baud.
+
+
+
+******************************************************************************
+
+
+Name:
+=====
+ i2s_loopback
+
+
+Description:
+============
+ An example to show basic I2S operation.
+
+
+Purpose:
+========
+This example enables the I2S interfaces to loop back data from
+each other.  Either I2S0 or I2S1 can be selected as the master.
+The required pin connections are as follows.
+Apollo4 (BGA):
+J9-2 I2S1DIN  to J9-16 I2S0DOUT
+J9-4 I2S1WS   to J9-14 I2S0WS
+J9-6 I2S1DOUT to J9-12 I2S0DIN
+J9-8 I2S1CLK  to J11-7 I2S0CK
+
+Apollo4 Blue (SIP):
+J9-1 I2S1DIN  to J9-8  I2S0DOUT
+J9-2 I2S1WS   to J9-7  I2S0WS
+J9-3 I2S1DOUT to J9-6  I2S0DIN
+J9-4 I2S1CLK  to J11-7 I2S0CK
+
+Printing takes place over the ITM at 1M Baud.
+
+
+
+******************************************************************************
+
+
+Name:
+=====
+ pdm_fft
+
+
+Description:
+============
+ An example to show basic PDM operation.
+
+
+Purpose:
+========
+This example enables the PDM interface to record audio signals from an
+external microphone. The required pin connections are:
+
+Printing takes place over the ITM at 1M Baud.
+
+GPIO 50 - PDM0 CLK
+GPIO 51 - PDM0 DATA
+
+GPIO 52 - PDM1 CLK
+GPIO 53 - PDM1 DATA
+
+GPIO 54 - PDM2 CLK
+GPIO 55 - PDM2 DATA
+
+GPIO 56 - PDM3 CLK
+GPIO 57 - PDM3 DATA
+
+
+******************************************************************************
+
+
+Name:
+=====
+ pdm_rtt_stream
+
+
+Description:
+============
+ An example to show PDM audio streaming to PC over RTT data logger.
+
+
+Purpose:
+========
+This example enables the PDM interface to record audio signals from an
+external microphone. The required pin connections are:
+
+Printing takes place over the ITM at 1M Baud.
+RTT logger takes place over the SWD at 4M Baud.
+
+Usage:
+======
+Build and download the program into the target device.
+Reset the target and check the SWO print for PDM settings.
+Run the helper script 'rtt_logger.py' in the project folder
+
+python3 rtt_logger.py
+
+(In this example, RTT control block is mapped to a fixed address to facilitate
+the searching process. If the address is changed, make sure to modify
+the rtt_logger.py script to match the address.)
+
+During data streaming, press any key to stop the recording.
+The audio captured is stored into the same folder as the rtt_logger.py,
+with a file name of yyyymmdd-hh-mm-ss.pcm.
+
+To check the audio, load the *.pcm file into audio analysis tools and check.
+E.g. in Audacity, https://www.audacityteam.org/:
+File -> Import -> Raw data...
+Default import format is:
+Signed 24-bit PCM
+Little-endian
+2 Channels (Stereo)
+Start offset: 0 bytes
+Amount to import: 100%
+Sample rate: 16000 Hz
+
+
+GPIO 50 - PDM0 CLK
+GPIO 51 - PDM0 DATA
+
+GPIO 52 - PDM1 CLK
+GPIO 53 - PDM1 DATA
+
+GPIO 54 - PDM2 CLK
+GPIO 55 - PDM2 DATA
+
+GPIO 56 - PDM3 CLK
+GPIO 57 - PDM3 DATA
+
+
+
+******************************************************************************
+
+
+Name:
+=====
+ pdm_to_i2s
+
+
+Description:
+============
+ An example to show PDM to I2S(slave) operation.
+
+
+Purpose:
+========
+This example enables the PDM and I2S interface to collect audio signals from
+an external microphone, I2S module using pingpong buffer to interact with PDM,
+and start transaction when mclk is supplied(from external I2S master).
+Notice: external mclk should be supplied first at this example.
+The required pin connections are:
+
+Printing takes place over the ITM at 1M Baud.
+
+GPIO 50 - PDM0 CLK
+GPIO 51 - PDM0 DATA
+
+GPIO 52 - PDM1 CLK
+GPIO 53 - PDM1 DATA
+
+GPIO 54 - PDM2 CLK
+GPIO 55 - PDM2 DATA
+
+GPIO 56 - PDM3 CLK
+GPIO 57 - PDM3 DATA
+
+
+******************************************************************************
+
+
+Name:
+=====
+ ble_firmware_update
+
+
+Description:
+============
+ This is the application just for updating built-in BLE firmware into Cooper.
+
+
+
+
+
+******************************************************************************
+
+
+Name:
+=====
+ ble_freertos_adv_ext
+
+
+Description:
+============
+ ARM Cordio BLE - Advertising Extension Application Example.
+
+
+Purpose:
+========
+This example implements advertising extension within the FreeRTOS
+framework. To verify extended advertising working routines.
+
+Additional Information:
+=======================
+To enable debug printing, add the following project-level macro definitions.
+
+AM_DEBUG_PRINTF
+WSF_TRACE_ENABLED=1
+
+When defined, debug messages will be sent over ITM/SWO at 1M Baud.
+
+Note that when these macros are defined, the device will never achieve deep
+sleep, only normal sleep, due to the ITM (and thus the HFRC) being enabled.
+
+
+******************************************************************************
+
+
+Name:
+=====
+ ble_freertos_amdtpc
+
+
+Description:
+============
+ ARM Cordio BLE - AMDTP Client (Master) Example.
+
+
+Purpose:
+========
+This example is the client (master) for the BLE Ambiq Micro
+Data Transfer Protocol.  This example is meant to run on an Apollo3 EVB
+along with another Apollo3 EVB serving as the server. This example provides
+a UART command line interface with a simple menu that allows the user to scan,
+connect and initiate data transfers from either M->S or S->M direction.
+
+Printing takes place over the ITM at 1M Baud.
+
+
+
+******************************************************************************
+
+
+Name:
+=====
+ ble_freertos_amota
+
+
+Description:
+============
+ ARM Cordio BLE - Ambiq Micro Over the Air (AMOTA) Example.
+
+
+Purpose:
+========
+This example implements Ambiq Micro Over-the-Air (OTA) slave.  This
+example is designed to allow loading of a binary software update from either
+and iOS or Android phone running Ambiq's application.  This example works
+with the Apollo3 Secure Bootloader (SBL) to place the image in flash and then
+reset the Apollo3 to allow SBL to validate and install the image.
+
+AM_DEBUG_PRINTF
+WSF_TRACE_ENABLED=1
+
+If enabled, debug messages will be sent over ITM at 1M Baud.
+
+Additional Information:
+=======================
+The directory \tools\apollo3_amota\scripts contains a Makefile which will
+build the OTA binary.
+
+The directory \docs\app_notes\amota explains how to use the Ambiq iOS and
+Android applications.
+
+
+******************************************************************************
+
+
+Name:
+=====
+ ble_freertos_ancs
+
+
+Description:
+============
+ ARM Cordio BLE - Apple Notification Center Service (ANCS) Example.
+
+
+Purpose:
+========
+This example implements a BLE Apple Notification Center Service
+profile.
+
+Printing takes place over the ITM at 1M Baud.
+
+
+******************************************************************************
+
+
+Name:
+=====
+ ble_freertos_atps
+
+
+Description:
+============
+ ARM Cordio BLE - ATP Application Example.
+
+
+Purpose:
+========
+This example implements a BLE heart rate sensor within the FreeRTOS
+framework. To minimize power usage, this application is compiled without
+debug printing by default (the "lp" version of this example excludes
+them by default).
+
+Additional Information:
+=======================
+To enable debug printing, add the following project-level macro definitions.
+
+AM_DEBUG_PRINTF
+WSF_TRACE_ENABLED=1
+
+When defined, debug messages will be sent over ITM/SWO at 1M Baud.
+
+Note that when these macros are defined, the device will never achieve deep
+sleep, only normal sleep, due to the ITM (and thus the HFRC) being enabled.
+
+
+******************************************************************************
+
+
+Name:
+=====
+ ble_freertos_fcc_test
+
+
+Description:
+============
+ ARM Cordio BLE - FCC test example
+
+
+Purpose:
+========
+This example is used to put Bluetooth radio in Apollo4 into various
+test mode on different channels on pressing BTN1 on the Apollo4 EVB.
+
+Printing takes place over the ITM at 1M Baud.
+
+
+
+******************************************************************************
+
+
+Name:
+=====
+ ble_freertos_fit
+
+
+Description:
+============
+ ARM Cordio BLE - Fit Application Example.
+
+
+Purpose:
+========
+This example implements a BLE heart rate sensor within the FreeRTOS
+framework. To minimize power usage, this application is compiled without
+debug printing by default (the "lp" version of this example excludes
+them by default).
+
+Additional Information:
+=======================
+To enable debug printing, add the following project-level macro definitions.
+
+AM_DEBUG_PRINTF
+WSF_TRACE_ENABLED=1
+
+When defined, debug messages will be sent over ITM/SWO at 1M Baud.
+
+Note that when these macros are defined, the device will never achieve deep
+sleep, only normal sleep, due to the ITM (and thus the HFRC) being enabled.
+
+
+******************************************************************************
+
+
+Name:
+=====
+ ble_freertos_locator
+
+
+Description:
+============
+ ARM Cordio BLE - Locator Application Example.
+
+
+Purpose:
+========
+This example implements a BLE heart rate sensor within the FreeRTOS
+framework. To minimize power usage, this application is compiled without
+debug printing by default (the "lp" version of this example excludes
+them by default).
+
+Additional Information:
+=======================
+To enable debug printing, add the following project-level macro definitions.
+
+AM_DEBUG_PRINTF
+WSF_TRACE_ENABLED=1
+
+When defined, debug messages will be sent over ITM/SWO at 1M Baud.
+
+Note that when these macros are defined, the device will never achieve deep
+sleep, only normal sleep, due to the ITM (and thus the HFRC) being enabled.
+
+
+******************************************************************************
+
+
+Name:
+=====
+ ble_freertos_throughput
+
+
+Description:
+============
+ ARM Cordio BLE - Ambiq Micro Throughput Example.
+
+
+Purpose:
+========
+This example implements is based on Over-the-Air (OTA) example,
+is designed to test the data transmitting thourghput.
+
+AM_DEBUG_PRINTF
+WSF_TRACE_ENABLED=1
+
+If enabled, debug messages will be sent over ITM at 1M Baud.
+
+
+******************************************************************************
+
+
+Name:
+=====
+ ble_freertos_txpower_ctrl
+
+
+Description:
+============
+ ARM Cordio BLE - Transmit Power Control Example
+
+
+Purpose:
+========
+This example demonstrates the control of BLE TX power level based
+on pressing Button #0 on the Apollo4 EVB.
+
+Printing takes place over the ITM at 1M Baud.
+
+
+
+******************************************************************************
+
+
+Name:
+=====
+ ble_freertos_watch
+
+
+Description:
+============
+ ARM Cordio BLE - Concurrent Master/Slave Example.
+
+
+Purpose:
+========
+This example demonstrates an BLE application in the Central role.
+That is the BLE application operates as a slave to phone master and as the
+master of subordinate slave devices running freertos_fit example in this SDK.
+
+Additional Information:
+=======================
+1. Printing takes place over the ITM at 1M Baud.
+2. When the example powers up,
+2.A. it enters advertising mode by default to wait for connection from
+smart phone with Time profile, Alert Notification profile and Phone
+Alert Status profile supported.
+2.B. when BTN1 on Apollo4 EVB is short-pressed, if advertising is on, it
+stops advertising first and then starts scanning when advertising is
+stopped; if scanning is on, it stops scanning and re-start advertising
+when scanning stops.
+2.C. During scanning, the device (if discovered) running freertos_fit
+example in this SDK will be connected and scanning will be stopped.
+2.D. Repeat 2.B. and 2.C. above to connect to a new slave device running
+freertos_fit example (max slaves is 3).
+3. when phone (iPhone is used) connects to this example, the services of Time
+profile, Alert Notification profile and Phone Alert Status profile will be
+
+
+******************************************************************************
+
+
+Name:
+=====
+ uart_ble_bridge
+
+
+Description:
+============
+ Converts UART HCI commands to SPI.
+
+
+This exapmle can be used as a way to communicate between a host chip using
+UART HCI and the BLE module inside Apollo3.
+
+
+******************************************************************************
+
+
+Name:
+=====
+ emmc_bm_fatfs
+
+
+Description:
+============
+ eMMC bare-metal FatFs example.
+
+
+Purpose:
+========
+This example demonstrates how to use file system with eMMC device
+based on the eMMC bare-metal HAL.
+
+Additional Information:
+=======================
+To enable debug printing, add the following project-level macro definitions.
+
+AM_DEBUG_PRINTF
+
+When defined, debug messages will be sent over ITM/SWO at 1M Baud.
+
+Note that when these macros are defined, the device will never achieve deep
+sleep, only normal sleep, due to the ITM (and thus the HFRC) being enabled.
+
+
+******************************************************************************
+
+
+Name:
+=====
+ emmc_raw_block_read_write
+
+
+Description:
+============
+ emmc raw block read and write example.
+
+
+Purpose:
+========
+This example demonstrates how to blocking PIO and DMA read & write
+APIs with eMMC device.
+
+Additional Information:
+=======================
+To enable debug printing, add the following project-level macro definitions.
+
+AM_DEBUG_PRINTF
+
+When defined, debug messages will be sent over ITM/SWO at 1M Baud.
+
+Note that when these macros are defined, the device will never achieve deep
+sleep, only normal sleep, due to the ITM (and thus the HFRC) being enabled.
+
+
+******************************************************************************
+
+
+Name:
+=====
+ rsa_sign_verify
+
+
+Description:
+============
+ A simple example to demonstrate using runtime crypto APIs.
+
+
+This example initializes the runtime crypto lib at the beginning.
+Later it invokes crypto and use it to do SHA and RSA.
+If ENABLE_CRYPTO_ON_OFF is defined, it also controls Crypto power and keeps
+it active only while in use.
+
+
+******************************************************************************
+
+
+Name:
+=====
+ dbi2dsi_test
+
+
+Description:
+============
+ DSI example.
+
+
+This example demonstrates how to drive a MIPI DSI panel.
+
+1-lane DSI includes 4 signals,
+* Differential clock lane - positive (CLKP)
+* Differential clock lane - negative (CLKN)
+* Differential data lane 0 - positive (D0P)
+* Differential data lane 0 - negative (D0N).
+
+
+
+******************************************************************************
+
+
+Name:
+=====
+ dsi_power_test
+
+
+Description:
+============
+ DSI example.
+
+
+This example demonstrates DSI power saving sequence.
+
+
+
+******************************************************************************
+
+
+Name:
+=====
+ dsi_rw_command
+
+
+Description:
+============
+ DSI example.
+
+
+This example demonstrates how to read and write RM67162 display registers with DSI.
+
+1-lane DSI includes 4 signals,
+* Differential clock lane - positive (CLKP)
+* Differential clock lane - negative (CLKN)
+* Differential data lane 0 - positive (D0P)
+* Differential data lane 0 - negative (D0N).
+
+
+
+******************************************************************************
+
+
+Name:
+=====
+ nemadc_4layer
+
+
+Description:
+============
+ NemaDC example.
+
+
+This example demonstrates DC 4 layers overlay with global alpha blending.
+* Layer0 - Red image
+* Layer1 - Green image
+* Layer2 - Blue image
+* Layer3 - Yellow image
+Global alpha value can be changed in layer*.alpha. Blendmode can be changed
+in layer*.blendmode.
+
+This example can work at two different SPI interfaces. When defined ENABLE_SPI4
+in preprocessor defined symbols, this example drives panel through SPI4 interface.
+When defined ENABLE_QSPI in preprocessor defined symbols, this example drives
+panel through QSPI interface.
+
+
+******************************************************************************
+
+
+Name:
+=====
+ nemadc_darkening_effect
+
+
+Description:
+============
+ Darkening effect example.
+
+
+This example demonstrates how to implement pull-down menu and darkening effects with DC.
+This example only supports MIPI DSI interface.
+
+
+
+******************************************************************************
+
+
+Name:
+=====
+ nemadc_dspi_test
+
+
+Description:
+============
+ NemaDC example.
+
+
+This example demonstrates how to drive display panel with 1P1T 2-wire
+Dual-SPI interface.
+
+1P1T 2-wire Dual-SPI interface includes 4 signals,
+* Chip select (CSX)
+* SPI clock (CLK)
+* Data interface 0 (DATA0)
+* Data interface 1 (DATA1).
+
+During the write sequence the display controller writes one or more bytes of
+information to the display module via the interface. The write sequence is
+initiated when CSX is driven from high to low and ends when CSX is pulled high.
+Dual-SPI reuses SPI4 DCX as the second DATA signal (DATA1), and sends 4 data
+bits per clock cycle. In this example, when send commands, SPI interface works
+at SPI4 mode. When send frame data, SPI interface works at Dual-SPI mode. Panel
+must be set to Dual-SPI mode through writing register in panel driver IC before
+sending frame data.
+
+When define TESTMODE_EN to 1 in nemadc_dspi_test.c, this example runs at test pattern mode.
+When define TESTMODE_EN to 0, this example runs at image display mode.
+
+
+******************************************************************************
+
+
+Name:
+=====
+ nemadc_qspi_test
+
+
+Description:
+============
+ NemaDC example.
+
+
+This example demonstrates how to drive display panel with Quad-SPI interface.
+
+Quad-SPI interface includes 6 signals,
+* Chip select (CSX)
+* SPI clock (CLK)
+* Data interface 0 (DATA0)
+* Data interface 1 (DATA1).
+* Data interface 2 (DATA2).
+* Data interface 3 (DATA3).
+
+Quad-SPI adds two more I/O lines (DATA2 and DATA3) and sends 4 data bits per
+clock cycle. During the write sequence the display controller writes one or
+more bytes of information to the display module via the interface. The write
+sequence is initiated when CSX is driven from high to low and ends when CSX
+is pulled high. In this example, when send commands, SPI interface works at
+SPI4 mode. When send frame data, SPI interface works at Qual-SPI mode. Panel
+must be set to Quad-SPI mode through configuring related pins to correct H/L
+level.
+
+When define TESTMODE_EN to 1 in nemadc_qspi_test.c, this example runs at test pattern mode.
+When define TESTMODE_EN to 0, this example runs at image display mode.
+
+
+******************************************************************************
+
+
+Name:
+=====
+ nemadc_scrolling_effect
+
+
+Description:
+============
+ Scrolling effect example.
+
+
+This example demonstrates how to implement scrolling effect with DC.
+This example only supports MIPI DSI interface.
+
+
+
+******************************************************************************
+
+
+Name:
+=====
+ nemadc_spi_test
+
+
+Description:
+============
+ NemaDC example.
+
+
+This example demonstrates how to drive a SPI4 panel.
+
+4-wire SPI includes 4 signals,
+* Chip select (CSX)
+* SPI clock (CLK)
+* SPI bidirectional data interface (DATA)
+* Data and command switch (DCX).
+
+During the write sequence the display controller writes one or more bytes of
+information to the display module via the interface. The write sequence is
+initiated when CSX is driven from high to low and ends when CSX is pulled high.
+DCX is driven low while command information is on the interface and is pulled
+high when data is present.
+
+When define TESTMODE_EN to 1 in nemadc_spi_test.c, this example runs at test pattern mode.
+When define TESTMODE_EN to 0, this example runs at image display mode.
+
+
+******************************************************************************
+
+
+Name:
+=====
+ nemagfx_balls_bench
+
+
+Description:
+============
+ NemaGFX example.
+
+This example created some random balls with alpha blending on the screen,
+use
+#define MAX_CIRCLE_NUM               (15)
+to choose how many balls rendering on the screen
+
+AM_DEBUG_PRINTF
+If enabled, debug messages will be sent over ITM.
+
+
+******************************************************************************
+
+
+Name:
+=====
+ nemagfx_benchmarks
+
+
+Description:
+============
+ NemaGFX example.
+
+
+this example demonstrate the Nema GPU and CPU performance use Nema GPU's
+basic characteristics, we should care about the FPS after each individual
+test.
+need a timer to get the accurate time past.
+
+AM_DEBUG_PRINTF
+If enabled, debug messages will be sent over ITM.
+
+
+******************************************************************************
+
+
+Name:
+=====
+ nemagfx_blend
+
+
+Description:
+============
+ NemaGFX example.
+
+brief Example that demonstrates blend feature
+Blending requires a series of calculations between the source (foreground)
+and destination (background)color fragments for producing the final color,
+which will be written in memory.This example use a constent table inside
+most of the supported blending mode.demonstrates each more every 1 second.
+the dst color is nema_rgba(0xff, 0, 0, 0x80), which is red color with 50%
+alpha blending, the src color is nema_rgba(0, 0, 0xff, 0x80), which is blue
+color with 50% alpha blending.
+
+Printing takes place over the ITM at 1M Baud.
+
+
+******************************************************************************
+
+
+Name:
+=====
+ nemagfx_coverflow
+
+
+Description:
+============
+ nemagfx_coverflow example.
+
+this exampe demostration software AA at the edge of the picture
+
+
+******************************************************************************
+
+
+Name:
+=====
+ nemagfx_font_render
+
+
+Description:
+============
+ nemagfx_font_render example.
+
+
+The example use some generated .c and .h files from the TureType font. The
+<size> parameter defines the height of the font. Fonts can be monospaced
+(fixed-width) or not.
+
+AM_DEBUG_PRINTF
+If enabled, debug messages will be sent over ITM.
+
+
+******************************************************************************
+
+
+Name:
+=====
+ nemagfx_gauge
+
+
+Description:
+============
+ Example of the app running under NemaGFX guage examples
+
+there is a guiBuilder
+project file located in "srcsguiBuilder_gauge", please use Nema guiBuilder
+version 0.15 or higher to open it. If you have some application level
+modifition from the guiBuilder and then you want demostration it on the board,
+you need copy the files from "src/guiBuilder_gauge/generated" into
+"src/generated" except four source file should take a look, those are
+
+display.c
+gitem_draw.c
+main.c
+gitem_tree.c
+
+Feel free to use any of compared tools such as beyond compare to see
+the difference, and kindly porting all the differece into new generated code.
+After that, you can compile whole project again.
+
+
+******************************************************************************
+
+
+Name:
+=====
+ nemagfx_grad
+
+
+Description:
+============
+ NemaGFX example.
+
+In computer graphics, a color gradient specifies a range of position-dependent
+colors, usually used to fill a region. For example, many window managers
+allow the screen background to be specified as a gradient. The colors
+produced by a gradient vary continuously with the position, producing smooth
+color transitions.
+
+
+******************************************************************************
+
+
+Name:
+=====
+ nemagfx_performance_test
+
+
+Description:
+============
+ NemaGFX performace test example.
+
+
+This example put texture or framebuffer at PSRAM and run various baseline
+test of GPU. The following operations are included:copy, blend, scale,
+rotate, scale+rotate.
+
+HOW TO USE: Compile->Download->Collect SWO output->Copy results to a file
+->rename this file as *.csv -> open by Excel -> save it as *.xlsx
+
+Note: Make sure the PSRAM is connected before running this test.
+
+
+******************************************************************************
+
+
+Name:
+=====
+ nemagfx_rotating_clock
+
+
+Description:
+============
+ NemaGFX example.
+
+this example use two frame buffer demonstrate a digital rotating clock,
+with Nema GPU support, the shader effect continue shows while timer passing
+need a timer to get the accurate time past.
+
+
+******************************************************************************
+
+
+Name:
+=====
+ nemagfx_rotating_crate
+
+
+Description:
+============
+ Example of the app running nemagfx rotating_crate.
+
+this example shows a rotating crate with texture rending support. with Nema
+GPU support, it can significantly reduce the general CPU effort to calculate
+the data inside the frame buffer
+
+AM_DEBUG_PRINTF
+If enabled, debug messages will be sent over ITM.
+
+
+******************************************************************************
+
+
+Name:
+=====
+ nemagfx_stress_test
+
+
+Description:
+============
+ NemaGFX example.
+
+This example uses MSPI, IOM, DMA, GPU, and DC to read/write data from different
+ram sections to put enormous pressure on the AXI bus.
+The GUI task also demonstrates how to use the partial frame buffer and ping-pong
+buffer features in a pipeline workflow for DMA, GPU, and DC. In GUI task,
+DMA copy texture from external PSRAM to internal SSRAM or ExtendedRAM,
+GPU render these textures to frame buffer, and DC transfer the framebuffer to
+display panel, these three steps are organized in a pipeline to make DMA, GPU,
+and DC work in parallel.
+
+SMALLFB
+undefine this to disable partial framebuffer features
+SMALLFB_STRIPES
+controls how many stripes to divide the whole framebuffer
+
+Note: This example needs PSRAM devices connected to MSPI0, if you encounter
+hardfault, please check your PSRAM setting.You are supposed to see a digital
+Quartz clock if GUI task runs successfully.
+
+
+******************************************************************************
+
+
+Name:
+=====
+ nemagfx_transition_effects
+
+
+Description:
+============
+ Example of the app running under NemaGFX guage examples
+
+this example use one frame buffer demonstrate two picture trasition effect,
+with Nema GPU support, the effect include
+NEMA_TRANS_LINEAR_H,
+NEMA_TRANS_CUBE_H,
+NEMA_TRANS_INNERCUBE_H,
+NEMA_TRANS_STACK_H,
+NEMA_TRANS_LINEAR_V,
+NEMA_TRANS_CUBE_V,
+NEMA_TRANS_INNERCUBE_V,
+NEMA_TRANS_STACK_V,
+NEMA_TRANS_FADE,
+NEMA_TRANS_FADE_ZOOM,
+NEMA_TRANS_MAX,
+NEMA_TRANS_NONE
+
+AM_DEBUG_PRINTF
+If enabled, debug messages will be sent over ITM.
+
+
+******************************************************************************
+
+
+Name:
+=====
+ nemagfx_tsc_fb
+
+
+Description:
+============
+ NemaGFX example.
+
+Nemagfx_tsc_fb is a demo of TSC frame-buffer compression. The program uses
+TSC4-compressed frame-buffer during run-time. It saves frame-buffer space
+in RAM in a scale of 1:4 also.The demo use example NEMADC_TSC4 frame buffer
+shows a 400x400 TSC4 image on the screen, it will significantly save RAM use.
+Note:  the width and height of the frame-buffer should be 4-pixels aligned
+
+AM_DEBUG_PRINTF
+If enabled, debug messages will be sent over ITM.
+
+
+******************************************************************************
+
+
+Name:
+=====
+ nemagfx_watchface
+
+
+Description:
+============
+ NemaGFX example.
+
+this example uses two frame buffer demonstrate a digital Quartz clock, with
+Nema GPU support, the shader effect continue shows while timer passing, the
+function needs a timer to get the accurate time past.
+AM_DEBUG_PRINTF
+If enabled, debug messages will be sent over ITM.
+
+
+******************************************************************************
+
+
+Name:
+=====
+ nemagfx_watch_gui
+
+
+Description:
+============
+ Example of the app running under NemaGFX watch_gui examples
+
+of its GuiBuilder.
+this problem is created by Nema guiBuilder, we simulated the touch event by
+always touched and moving left to right and then right to left reciprocating.
+
+AM_DEBUG_PRINTF
+If enabled, debug messages will be sent over ITM.
+
+
+******************************************************************************
+
+
+Name:
+=====
+ iom_psram
+
+
+Description:
+============
+ Example that demostrates IOM, connecting to a SPI PSRAM
+
+PSRAM is initialized with a known pattern data using Blocking IOM Write.
+This example starts a 1 second timer. At each 1 second period, it initiates
+reading a fixed size block from the PSRAM device using Non-Blocking IOM
+Read, and comparing againts the predefined pattern
+
+Define one of PSRAM_DEVICE_ macros to select the PSRAM device
+
+SWO is configured in 1M baud, 8-n-1 mode.
+
+
+******************************************************************************
+
+
+Name:
+=====
+ ios_fifo
+
+
+Description:
+============
+ Example slave used for demonstrating the use of the IOS FIFO.
+
+
+Purpose:
+========
+This slave component runs on one EVB and is used in conjunction with
+the companion host example, ios_fifo_host, which runs on a second EVB.
+
+The ios_fifo example has no print output.
+The host example does use the ITM SWO to let the user know progress and
+status of the demonstration.
+
+This example implements the slave part of a protocol for data exchange with
+an Apollo IO Master (IOM).  The host sends one byte commands on SPI/I2C by
+writing to offset 0x80.
+
+The command is issued by the host to Start/Stop Data accumulation, and also
+to acknowledge read-complete of a block of data.
+
+On the IOS side, once it is asked to start accumulating data (using START
+command), two CTimer based events emulate sensors sending data to IOS.
+When IOS has some data for host, it implements a state machine,
+synchronizing with the host.
+
+The IOS interrupts the host to indicate data availability. The host then
+reads the available data (as indicated by FIFOCTR) by READing using IOS FIFO
+(at address 0x7F).  The IOS keeps accumulating any new data coming in the
+background.
+
+Host sends an acknowledgment to IOS once it has finished reading a block
+of data initiated by IOS (partially or complete). IOS interrupts the host
+again if and when it has more data for the host to read, and the cycle
+repeats - till host indicates that it is no longer interested in receiving
+data by sending STOP command.
+
+Printing takes place over the ITM at 1M Baud.
+
+Additional Information:
+=======================
+In order to run this example, a host device (e.g. a second EVB) must be set
+up to run the host example, ios_fifo_host.  The two boards can be connected
+using fly leads between the two boards as follows.
+
+Pin connections for the I/O Master board to the I/O Slave board.
+SPI:
+HOST (ios_fifo_host)                    SLAVE (ios_fifo)
+--------------------                    ----------------
+GPIO[10] GPIO Interrupt (slave to host) GPIO[4]  GPIO interrupt
+GPIO[5]  IOM0 SPI SCK                   GPIO[0]  IOS SPI SCK
+GPIO[6]  IOM0 SPI MOSI                  GPIO[1]  IOS SPI MOSI
+GPIO[7]  IOM0 SPI MISO                  GPIO[2]  IOS SPI MISO
+GPIO[50] IOM0 SPI nCE                   GPIO[3]  IOS SPI nCE
+GND                                     GND
+
+I2C:
+HOST (ios_fifo_host)                    SLAVE (ios_fifo)
+--------------------                    ----------------
+GPIO[10] GPIO Interrupt (slave to host) GPIO[4]  GPIO interrupt
+GPIO[5]  IOM0 I2C SCL                   GPIO[0]  IOS I2C SCL
+GPIO[6]  IOM0 I2C SDA                   GPIO[1]  IOS I2C SDA
+GND                                     GND
+
+
+******************************************************************************
+
+
+Name:
+=====
+ ios_fifo_host
+
+
+Description:
+============
+ Example host used for demonstrating the use of the IOS FIFO.
+
+
+Purpose:
+========
+This host component runs on one EVB and is used in conjunction with
+the companion slave example, ios_fifo, which runs on a second EVB.
+
+The host example uses the ITM SWO to let the user know progress and
+status of the demonstration.  The SWO is configured at 1M baud.
+The ios_fifo example has no print output.
+
+This example implements the host part of a protocol for data exchange with
+an Apollo IO Slave (IOS).  The host sends one byte commands on SPI/I2C by
+writing to offset 0x80.
+
+The command is issued by the host to Start/Stop Data accumulation, and also
+to acknowledge read-complete of a block of data.
+
+On the IOS side, once it is asked to start accumulating data (using START
+command), two CTimer based events emulate sensors sending data to IOS.
+When IOS has some data for host, it implements a state machine,
+synchronizing with the host.
+
+The IOS interrupts the host to indicate data availability. The host then
+reads the available data (as indicated by FIFOCTR) by READing using IOS FIFO
+(at address 0x7F).  The IOS keeps accumulating any new data coming in the
+background.
+
+Host sends an acknowledgement to IOS once it has finished reading a block
+of data initiated by IOS (partitally or complete). IOS interrupts the host
+again if and when it has more data for the host to read, and the cycle
+repeats - till host indicates that it is no longer interested in receiving
+data by sending STOP command.
+
+Additional Information:
+=======================
+In order to run this example, a slave device (e.g. a second EVB) must be set
+up to run the companion example, ios_fifo.  The two boards can be connected
+using fly leads between the two boards as follows.
+
+Pin connections for the I/O Master board to the I/O Slave board.
+SPI:
+HOST (ios_fifo_host)                    SLAVE (ios_fifo)
+--------------------                    ----------------
+GPIO[10] GPIO Interrupt (slave to host) GPIO[4]  GPIO interrupt
+GPIO[5]  IOM0 SPI SCK                   GPIO[0]  IOS SPI SCK
+GPIO[6]  IOM0 SPI MOSI                  GPIO[1]  IOS SPI MOSI
+GPIO[7]  IOM0 SPI MISO                  GPIO[2]  IOS SPI MISO
+GPIO[50] IOM0 SPI nCE                   GPIO[3]  IOS SPI nCE
+GND                                     GND
+
+I2C:
+HOST (ios_fifo_host)                    SLAVE (ios_fifo)
+--------------------                    ----------------
+GPIO[10] GPIO Interrupt (slave to host) GPIO[4]  GPIO interrupt
+GPIO[5]  IOM0 I2C SCL                   GPIO[0]  IOS I2C SCL
+GPIO[6]  IOM0 I2C SDA                   GPIO[1]  IOS I2C SDA
+GND                                     GND
+
+
+******************************************************************************
+
+
+Name:
+=====
+ mpu_mspi_ddr_octal_psram_example
+
+
+Description:
+============
+ Example of using MPU protection as workaround for DSP RAM issue.
+
+
+Purpose:
+========
+This example demonstrates how to use MPU as workaround for DSP RAM
+issue.
+
+Additional Information:
+=======================
+To enable debug printing, add the following project-level macro definitions.
+
+AM_DEBUG_PRINTF
+
+When defined, debug messages will be sent over ITM/SWO at 1M Baud.
+
+Note that when these macros are defined, the device will never achieve deep
+sleep, only normal sleep, due to the ITM (and thus the HFRC) being enabled.
+
+
+******************************************************************************
+
+
+Name:
+=====
+ mspi_octal_example
+
+
+Description:
+============
+ Example of the MSPI operation with Octal SPI Flash.
+
+
+Purpose:
+========
+This example configures an MSPI connected flash device in Octal mode
+and performs various operations - verifying the correctness of the same
+Operations include - Erase, Write, Read, and XIP
+
+Printing takes place over the ITM at 1M Baud.
+
+Additional Information:
+=======================
+this example can work on:
+Apollo3p_evb + Cygnus
+Target hardware uses 1.8V power supply voltage.
+Actual Octal flash on Cygnus board is ATXP128 (Device ID: 0x00A91F) instead of ATXP032
+Define ADESTO_ATXP032
+
+
+
+******************************************************************************
+
+
+Name:
+=====
+ mspi_octal_example_fifo_full
+
+
+Description:
+============
+ Example of the MSPI operation with Octal SPI Flash.
+
+
+Purpose:
+========
+This example configures an MSPI connected flash device in Octal mode
+and performs various operations - verifying the correctness of the same
+Operations include - Erase, Write, Read, and XIP
+
+Printing takes place over the ITM at 1M Baud.
+
+Additional Information:
+=======================
+this example can work on:
+Apollo3p_evb + Cygnus
+Target hardware uses 1.8V power supply voltage.
+Actual Octal flash on Cygnus board is ATXP128 (Device ID: 0x00A91F) instead of ATXP032
+Define ADESTO_ATXP032
+
+
+
+******************************************************************************
+
+
+Name:
+=====
+ mspi_psram_example
+
+
+Description:
+============
+ Example of the MSPI operation with Quad SPI PSRAM.
+
+
+Purpose:
+========
+This example demonstrates MSPI Quad operation using the MSPI PSRAM
+device.
+
+
+
+******************************************************************************
+
+
+Name:
+=====
+ mspi_quad_example
+
+
+Description:
+============
+ Example of the MSPI operation with Quad SPI Flash.
+
+
+Purpose:
+========
+This example configures an MSPI connected flash device in Quad mode
+and performs various operations - verifying the correctness of the same
+Operations include - Erase, Write, Read, Read using XIP Apperture and XIP.
+
+Printing takes place over the ITM at 1M Baud.
+
+Additional Information:
+=======================
+this example can work on:
+Apollo3p_evb + Cygnus
+Target hardware uses 1.8V power supply voltage.
+
+
+
+******************************************************************************
+
+
+Name:
+=====
+ info_dump
+
+
+Description:
+============
+ A simple program to dump the INFOspace to SWO
+
+
+
+
+******************************************************************************
+
+
+Name:
+=====
+ mram_program
+
+
+Description:
+============
+ MRAM programming example.
+
+
+Purpose:
+========
+This example shows how to modify the internal MRAM using HAL
+MRAM helper functions.
+
+This example works on the portion of the MRAM at the 1MB boundary.
+
+Printing takes place over the ITM at 1M Baud.
+
+
+
+******************************************************************************
+
+
+Name:
+=====
+ adc_lpmode0_dma
+
+
+Description:
+============
+ This example takes samples with the ADC at high-speed using DMA.
+
+
+Purpose:
+========
+This example shows the CTIMER-A3 triggering repeated samples of an external
+input at 1.2Msps in LPMODE0.  The example uses the CTIMER-A3 to trigger
+ADC sampling.  Each data point is 128 sample average and is transferred
+from the ADC FIFO into an SRAM buffer using DMA.
+
+Printing takes place over the ITM at 1M Baud.
+
+
+
+******************************************************************************
+
+
+Name:
+=====
+ adc_vbatt
+
+
+
+
+******************************************************************************
+
+
+Name:
+=====
+ binary_counter
+
+
+Description:
+============
+ Example that displays the timer count on the LEDs.
+
+
+Purpose:
+========
+This example increments a variable on every timer interrupt. The global
+variable is used to set the state of the LEDs. The example sleeps otherwise.
+
+Printing takes place over the ITM at 1M Baud.
+
+
+
+******************************************************************************
+
+
+Name:
+=====
+ hello_world
+
+
+Description:
+============
+ A simple "Hello World" example.
+
+
+This example prints a "Hello World" message with some device info
+over SWO at 1M baud. To see the output of this program, run AMFlash,
+and configure the console for SWO. The example sleeps after it is done
+printing.
+
+
+******************************************************************************
+
+
+Name:
+=====
+ hp_mode_192mhz
+
+
+Description:
+============
+ Example demonstrates the usage of High Performance Mode(192MHz) HAL.
+
+
+Purpose:
+========
+This example sets the Apollo4 into Low Power Mode(96MHz), then
+times a calculation of prime numbers, displaying the elapsed time. Next,
+it switches the Apollo4 into High Performance Mode(192MHz), performs the
+the same calculation, then displays the elapsed time, which should be
+roughly 50% of Low Power Mode.
+
+Printing takes place over the ITM at 1M Baud.
+
+
+
+******************************************************************************
+
+
+Name:
+=====
+ rtc_print
+
+
+Description:
+============
+ Example using the internal RTC.
+
+
+This example demonstrates how to interface with the RTC and prints the
+time over SWO.
+
+The example works by configuring a timer interrupt which will periodically
+wake the core from deep sleep. After every interrupt, it prints the current
+RTC time.
+
+
+
+******************************************************************************
+
+
+Name:
+=====
+ stimer
+
+
+Description:
+============
+ Example using a stimer with interrupts.
+
+
+Purpose:
+========
+This example demonstrates how to setup the stimer for counting and
+interrupts. It toggles LED 0 to 4 every interrupt, which is set for 1 sec.
+
+Printing takes place over the ITM at 1M Baud.
+
+
+
+******************************************************************************
+
+
+Name:
+=====
+ watchdog
+
+
+Description:
+============
+ Example of a basic configuration of the watchdog.
+
+
+Purpose:
+========
+This example shows a simple configuration of the watchdog. It will print
+a banner message, configure the watchdog for both interrupt and reset
+generation, and immediately start the watchdog timer.
+The watchdog ISR provided will 'pet' the watchdog four times, printing
+a notification message from the ISR each time.
+On the fifth interrupt, the watchdog will not be pet, so the 'reset'
+action will eventually be allowed to occur.
+On the sixth timeout event, the WDT should issue a system reset, and the
+program should start over from the beginning.
+
+Printing takes place over the ITM at 1M Baud.
+
+
+
+******************************************************************************
+
+
+Name:
+=====
+ ble_freertos_fit_lp
+
+
+Description:
+============
+ ARM Cordio BLE - Fit Application Example.
+
+
+Purpose:
+========
+This example implements a BLE heart rate sensor within the FreeRTOS
+framework. To minimize power usage, this application is compiled without
+debug printing by default (the "lp" version of this example excludes
+them by default).
+
+Additional Information:
+=======================
+To enable debug printing, add the following project-level macro definitions.
+
+AM_DEBUG_PRINTF
+WSF_TRACE_ENABLED=1
+
+When defined, debug messages will be sent over ITM/SWO at 1M Baud.
+
+Note that when these macros are defined, the device will never achieve deep
+sleep, only normal sleep, due to the ITM (and thus the HFRC) being enabled.
+
+
+******************************************************************************
+
+
+Name:
+=====
+ coremark
+
+
+Description:
+============
+ EEMBC COREMARK test.
+
+
+Purpose:
+========
+This example runs the official EEMBC COREMARK test.
+
+The Coremark run begins by first outputing a banner (to the UART)
+indicating that it has started.  It then does a complete disable
+and power down of the UART for accurate power measuring during the run.
+
+The Coremkark implementation performs 2000 ITERATIONS (specified in
+ambiq_core_config.h), which is plenty of time for correct operation
+of the benchmark.
+
+Once the run has completed, the UART is reenabled and the results printed.
+
+Text is output to the UART at 115,200 BAUD, 8 bit, no parity.
+Please note that text end-of-line is a newline (LF) character only.
+Therefore, the UART terminal must be set to simulate a CR/LF.
+
+
+******************************************************************************
+
+
+Name:
+=====
+ deepsleep
+
+
+Description:
+============
+ Example demonstrating how to enter deepsleep.
+
+
+Purpose:
+========
+This example configures the device to go into a deep sleep mode. Once in
+sleep mode the device has no ability to wake up. This example is merely to
+provide the opportunity to measure deepsleep current without interrupts
+interfering with the measurement.
+
+The example begins by printing out a banner announcement message through
+the UART, which is then completely disabled for the remainder of execution.
+
+Text is output to the UART at 115,200 BAUD, 8 bit, no parity.
+Please note that text end-of-line is a newline (LF) character only.
+Therefore, the UART terminal must be set to simulate a CR/LF.
+
+
+******************************************************************************
+
+
+Name:
+=====
+ deepsleep_wake
+
+
+Description:
+============
+ Example that goes to deepsleep and wakes from either the RTC or GPIO.
+
+
+Purpose:
+========
+This example configures the device to go into a deep sleep mode. Once in
+deep sleep the RTC peripheral will wake the device every second, check to
+see if 5 seconds has elapsed and then toggle LED1.
+
+Alternatively, it will awake when button 0 is pressed and toggle LED0.
+
+The example begins by printing out a banner annoucement message through
+the UART, which is then completely disabled for the remainder of execution.
+
+Text is output to the UART at 115,200 BAUD, 8 bit, no parity.
+Please note that text end-of-line is a newline (LF) character only.
+Therefore, the UART terminal must be set to simulate a CR/LF.
+
+
+******************************************************************************
+
+
+Name:
+=====
+ tinyusb_cdc
+
+
+Description:
+============
+ tinyusb cdc-acm example.
+
+
+This example demonstrates how to use the USB CDC-ACM device class. it will
+echo back the the input from the terminal tool.
+
+
+
+
+******************************************************************************
+
+
+Name:
+=====
+ tinyusb_cdc_dual_ports
+
+
+Description:
+============
+ tinyusb two cdc-acm composite USB example.
+
+
+This example demonstrates how to add two USB CDC-ACM COM ports. it will echo
+back the the input from one terminal and copy the input to another terminal
+at the same time.
+
+
+
+
+******************************************************************************
+
+
+Name:
+=====
+ tinyusb_cdc_msc
+
+
+Description:
+============
+ tinyusb cdc-acm and mass storage USB example.
+
+
+This example demonstrates a composite USB device including one USB CDC-ACM
+and one mass storage device. the COM port will echo back the
+the input from the terminal and the mass storage device will be disk when
+connecting to other OS like Windows and Linux.
+
+
+
+
+******************************************************************************
+
+
+Name:
+=====
+ tinyusb_cdc_msc_freertos
+
+
+Description:
+============
+ tinyusb cdc-acm and mass storage FreeRTOS USB example.
+
+
+This example demonstrates a composite USB device including one USB CDC-ACM
+and one mass storage device. the COM port will echo back the
+the input from the terminal and the mass storage device will be disk when
+connecting to other OS like Windows and Linux. The CDC-ACM and Mass storage
+functions will be handled by two separate FreeRTOS tasks.
+
+
+
+
+******************************************************************************
+
+
+Name:
+=====
+ ble_firmware_update
+
+
+Description:
+============
+ This is the application just for updating built-in BLE firmware into Cooper.
+
+
+
+
+
+******************************************************************************
+
+
+Name:
+=====
+ ble_freertos_amdtpc
+
+
+Description:
+============
+ ARM Cordio BLE - AMDTP Client (Master) Example.
+
+
+Purpose:
+========
+This example is the client (master) for the BLE Ambiq Micro
+Data Transfer Protocol.  This example is meant to run on an Apollo3 EVB
+along with another Apollo3 EVB serving as the server. This example provides
+a UART command line interface with a simple menu that allows the user to scan,
+connect and initiate data transfers from either M->S or S->M direction.
+
+Printing takes place over the ITM at 1M Baud.
+
+
+
+******************************************************************************
+
+
+Name:
+=====
+ ble_freertos_amota
+
+
+Description:
+============
+ ARM Cordio BLE - Ambiq Micro Over the Air (AMOTA) Example.
+
+
+Purpose:
+========
+This example implements Ambiq Micro Over-the-Air (OTA) slave.  This
+example is designed to allow loading of a binary software update from either
+and iOS or Android phone running Ambiq's application.  This example works
+with the Apollo3 Secure Bootloader (SBL) to place the image in flash and then
+reset the Apollo3 to allow SBL to validate and install the image.
+
+AM_DEBUG_PRINTF
+WSF_TRACE_ENABLED=1
+
+If enabled, debug messages will be sent over ITM at 1M Baud.
+
+Additional Information:
+=======================
+The directory \tools\apollo3_amota\scripts contains a Makefile which will
+build the OTA binary.
+
+The directory \docs\app_notes\amota explains how to use the Ambiq iOS and
+Android applications.
+
+
+******************************************************************************
+
+
+Name:
+=====
+ ble_freertos_fcc_test
+
+
+Description:
+============
+ ARM Cordio BLE - FCC test example
+
+
+Purpose:
+========
+This example is used to put Bluetooth radio in Apollo4 into various
+test mode on different channels on pressing BTN1 on the Apollo4 EVB.
+
+Printing takes place over the ITM at 1M Baud.
+
+
+
+******************************************************************************
+
+
+Name:
+=====
+ ble_freertos_fit
+
+
+Description:
+============
+ ARM Cordio BLE - Fit Application Example.
+
+
+Purpose:
+========
+This example implements a BLE heart rate sensor within the FreeRTOS
+framework. To minimize power usage, this application is compiled without
+debug printing by default (the "lp" version of this example excludes
+them by default).
+
+Additional Information:
+=======================
+To enable debug printing, add the following project-level macro definitions.
+
+AM_DEBUG_PRINTF
+WSF_TRACE_ENABLED=1
+
+When defined, debug messages will be sent over ITM/SWO at 1M Baud.
+
+Note that when these macros are defined, the device will never achieve deep
+sleep, only normal sleep, due to the ITM (and thus the HFRC) being enabled.
+
+
+******************************************************************************
+
+
+Name:
+=====
+ ble_freertos_throughput
+
+
+Description:
+============
+ ARM Cordio BLE - Ambiq Micro Throughput Example.
+
+
+Purpose:
+========
+This example implements is based on Over-the-Air (OTA) example,
+is designed to test the data transmitting thourghput.
+
+AM_DEBUG_PRINTF
+WSF_TRACE_ENABLED=1
+
+If enabled, debug messages will be sent over ITM at 1M Baud.
+
+
+******************************************************************************
+
+
+Name:
+=====
+ ble_freertos_watch
+
+
+Description:
+============
+ ARM Cordio BLE - Concurrent Master/Slave Example.
+
+
+Purpose:
+========
+This example demonstrates an BLE application in the Central role.
+That is the BLE application operates as a slave to phone master and as the
+master of subordinate slave devices running freertos_fit example in this SDK.
+
+Additional Information:
+=======================
+1. Printing takes place over the ITM at 1M Baud.
+2. When the example powers up,
+2.A. it enters advertising mode by default to wait for connection from
+smart phone with Time profile, Alert Notification profile and Phone
+Alert Status profile supported.
+2.B. when BTN1 on Apollo4 EVB is short-pressed, if advertising is on, it
+stops advertising first and then starts scanning when advertising is
+stopped; if scanning is on, it stops scanning and re-start advertising
+when scanning stops.
+2.C. During scanning, the device (if discovered) running freertos_fit
+example in this SDK will be connected and scanning will be stopped.
+2.D. Repeat 2.B. and 2.C. above to connect to a new slave device running
+freertos_fit example (max slaves is 3).
+3. when phone (iPhone is used) connects to this example, the services of Time
+profile, Alert Notification profile and Phone Alert Status profile will be
+
+
+******************************************************************************
+
+
+Name:
+=====
+ uart_ble_bridge
+
+
+Description:
+============
+ Converts UART HCI commands to SPI.
+
+
+This exapmle can be used as a way to communicate between a host chip using
+UART HCI and the BLE module inside Apollo3.
+
+
+******************************************************************************
+
+
+Name:
+=====
+ info_dump
+
+
+Description:
+============
+ A simple program to dump the INFOspace to SWO
+
+
+
+
+******************************************************************************
+
+
+Name:
+=====
+ mram_program
+
+
+Description:
+============
+ MRAM programming example.
+
+
+Purpose:
+========
+This example shows how to modify the internal MRAM using HAL
+MRAM helper functions.
+
+This example works on the portion of the MRAM at the 1MB boundary.
+
+Printing takes place over the ITM at 1M Baud.
+
+
+
+******************************************************************************
+
+
+Name:
+=====
+ binary_counter
+
+
+Description:
+============
+ Example that displays the timer count on the LEDs.
+
+
+Purpose:
+========
+This example increments a variable on every timer interrupt. The global
+variable is used to set the state of the LEDs. The example sleeps otherwise.
+
+Printing takes place over the ITM at 1M Baud.
+
+
+
+******************************************************************************
+
+
+Name:
+=====
+ hello_world
+
+
+Description:
+============
+ A simple "Hello World" example.
+
+
+This example prints a "Hello World" message with some device info
+over SWO at 1M baud. To see the output of this program, run AMFlash,
+and configure the console for SWO. The example sleeps after it is done
+printing.
+
+
+******************************************************************************
+
+
+Name:
+=====
+ hp_mode_192mhz
+
+
+Description:
+============
+ Example demonstrates the usage of High Performance Mode(192MHz) HAL.
+
+
+Purpose:
+========
+This example sets the Apollo4 into Low Power Mode(96MHz), then
+times a calculation of prime numbers, displaying the elapsed time. Next,
+it switches the Apollo4 into High Performance Mode(192MHz), performs the
+the same calculation, then displays the elapsed time, which should be
+roughly 50% of Low Power Mode.
+
+Printing takes place over the ITM at 1M Baud.
+
+
+
+******************************************************************************
+
+
+Name:
+=====
+ rtc_print
+
+
+Description:
+============
+ Example using the internal RTC.
+
+
+This example demonstrates how to interface with the RTC and prints the
+time over SWO.
+
+The example works by configuring a timer interrupt which will periodically
+wake the core from deep sleep. After every interrupt, it prints the current
+RTC time.
+
+
+
+******************************************************************************
+
+
+Name:
+=====
+ stimer
+
+
+Description:
+============
+ Example using a stimer with interrupts.
+
+
+Purpose:
+========
+This example demonstrates how to setup the stimer for counting and
+interrupts. It toggles LED 0 to 4 every interrupt, which is set for 1 sec.
+
+Printing takes place over the ITM at 1M Baud.
+
+
+
+******************************************************************************
+
+
+Name:
+=====
+ watchdog
+
+
+Description:
+============
+ Example of a basic configuration of the watchdog.
+
+
+Purpose:
+========
+This example shows a simple configuration of the watchdog. It will print
+a banner message, configure the watchdog for both interrupt and reset
+generation, and immediately start the watchdog timer.
+The watchdog ISR provided will 'pet' the watchdog four times, printing
+a notification message from the ISR each time.
+On the fifth interrupt, the watchdog will not be pet, so the 'reset'
+action will eventually be allowed to occur.
+On the sixth timeout event, the WDT should issue a system reset, and the
+program should start over from the beginning.
+
+Printing takes place over the ITM at 1M Baud.
+
+
+
+******************************************************************************
+
+
+Name:
+=====
+ ble_freertos_fit_lp
+
+
+Description:
+============
+ ARM Cordio BLE - Fit Application Example.
+
+
+Purpose:
+========
+This example implements a BLE heart rate sensor within the FreeRTOS
+framework. To minimize power usage, this application is compiled without
+debug printing by default (the "lp" version of this example excludes
+them by default).
+
+Additional Information:
+=======================
+To enable debug printing, add the following project-level macro definitions.
+
+AM_DEBUG_PRINTF
+WSF_TRACE_ENABLED=1
+
+When defined, debug messages will be sent over ITM/SWO at 1M Baud.
+
+Note that when these macros are defined, the device will never achieve deep
+sleep, only normal sleep, due to the ITM (and thus the HFRC) being enabled.
+
+
+******************************************************************************
+
+
+Name:
+=====
+ coremark
+
+
+Description:
+============
+ EEMBC COREMARK test.
+
+
+Purpose:
+========
+This example runs the official EEMBC COREMARK test.
+
+The Coremark run begins by first outputing a banner (to the UART)
+indicating that it has started.  It then does a complete disable
+and power down of the UART for accurate power measuring during the run.
+
+The Coremkark implementation performs 2000 ITERATIONS (specified in
+ambiq_core_config.h), which is plenty of time for correct operation
+of the benchmark.
+
+Once the run has completed, the UART is reenabled and the results printed.
+
+Text is output to the UART at 115,200 BAUD, 8 bit, no parity.
+Please note that text end-of-line is a newline (LF) character only.
+Therefore, the UART terminal must be set to simulate a CR/LF.
+
+
+******************************************************************************
+
+
+Name:
+=====
+ deepsleep
+
+
+Description:
+============
+ Example demonstrating how to enter deepsleep.
+
+
+Purpose:
+========
+This example configures the device to go into a deep sleep mode. Once in
+sleep mode the device has no ability to wake up. This example is merely to
+provide the opportunity to measure deepsleep current without interrupts
+interfering with the measurement.
+
+The example begins by printing out a banner announcement message through
+the UART, which is then completely disabled for the remainder of execution.
+
+Text is output to the UART at 115,200 BAUD, 8 bit, no parity.
+Please note that text end-of-line is a newline (LF) character only.
+Therefore, the UART terminal must be set to simulate a CR/LF.
+
+
+******************************************************************************
+
+
+Name:
+=====
+ deepsleep_wake
+
+
+Description:
+============
+ Example that goes to deepsleep and wakes from either the RTC or GPIO.
+
+
+Purpose:
+========
+This example configures the device to go into a deep sleep mode. Once in
+deep sleep the RTC peripheral will wake the device every second, check to
+see if 5 seconds has elapsed and then toggle LED1.
+
+Alternatively, it will awake when button 0 is pressed and toggle LED0.
+
+The example begins by printing out a banner annoucement message through
+the UART, which is then completely disabled for the remainder of execution.
+
+Text is output to the UART at 115,200 BAUD, 8 bit, no parity.
+Please note that text end-of-line is a newline (LF) character only.
+Therefore, the UART terminal must be set to simulate a CR/LF.
+
+
+******************************************************************************
+
+
+README.txt
+
+Overview:
+
+This is an adaptation of the TrustZone CryptoCell-312 runtime library from
+ARM. The original source code can be found at:
+
+https://github.com/ARM-software/cryptocell-312-runtime
+
+The mbedTLS and cc312 libraries work together to provide implementations of
+common cryptographic functions supported by the ARM cryptocell hardware,
+using a common API provided by mbedTLS.
+
+The version of cc312 provided here has been modified in a few ways to help
+facilitate integration with systems using Ambiq Apollo4 devices.
+Specifically we have made the following changes:
+
+    - Added configuration options in the cc312 build scripts to support Apollo4
+    - Added mbedTLS configuration headers to accomodate Apollo4 ports of
+      cc312 and mbedTLS for supported operating systems.
+    - Added a new script to assist with building the cc312 and mbedTLS
+      library in known configurations.
+    - Several small tweaks to the HAL/PAL porting layers to allow for easier
+      replacement of C stdlib functions.
+
+Integration with existing code:
+
+To access the cc312 and mbedTLS functionality from your project, you must add
+the following libraries and include paths.
+
+    Required libraries:
+    - mbedtls/library/libmbedtls.a: mbedTLS functions
+    - mbedtls/library/libmbedcrypto.a: Abstraction layer mapping mbedTLS to cc312
+    - host/lib/libcc_312.a: Hardware-supported crypto functions.
+    - host/lib/libpal_X.a (where X is a supported OS option): Hardware and
+      platform abstration layers (HAL and PAL) mapping cc312 functions to
+      hardware operations.
+
+    Required include paths:
+    - host/include (cc312 includes)
+    - mbedtls/include (mbedTLS includes)
+    - shared/include/pal (PAL includes)
+    - shared/include/pal/X where "X" is a supported OS (Platform-specific includes)
+
+Building libraries for your environment:
+
+Several of the above libraries must be specically compiled to function within
+a particular operating system or device. Both mbedTLS and cc312 provide build
+scripts to help make this porting process easier. The standard distribution
+provides build options for Linux, FreeRTOS, and baremetal build
+configurations for a small number of supported devices. Ambiq has
+specifically added configurations for Apollo4 for supported operating systems.
+
+Ambiq has also added additional scripts to help ensure that all of the
+appropriate build options are set correctly.
+
+Here are the instructions for rebuilding cc312 + mbedTLS for each option
+using GCC and a bash or bash-like environment.
+
+    Bare metal:
+        1. Clone the public cryptocell-312 repository (see address above) to a
+           directory parallel to this one.
+
+           For example (from the third_party directory):
+
+           git clone https://github.com/ARM-software/cryptocell-312-runtime.git
+
+        2. Take the ambiq-changes-r1p4.patch file from this directory, and apply
+           it to the newly cloned crypto repository. This patch should be
+           current as of version "update-cc110-bu-00000-r1p4".
+
+           Example (from cryptocell folder): patch -p1 < ../crypto/ambiq-crypto-mod.patch
+
+        3. Open "set_env_for_gcc.sh" and find the AMBIQ_ROOT variable. Make
+           sure this points to the location of the AmbiqSuite software you
+           are using.
+
+        4. Run "source set_env_for_gcc.sh" (Ambiq script to set environment
+           variables for the next step.)
+
+        5. ./prepare_mbedtls.sh clone
+
+        6. ./prepare_mbedtls.sh lib
+
+        7. make -C host/src ARM_CPU=$ARM_CPU TEE_OS=$TEE_OS
+README.txt for the SEGGER RTT Implementation Pack.
+
+MDK-ARM specifics:
+https://wiki.segger.com/Keil_MDK-ARM#RTT_in_uVision
+
+Included files:
+===============
+Root Directory
+  - Examples
+    - Main_RTT_InputEchoApp.c    - Sample application which echoes input on Channel 0.
+    - Main_RTT_MenuApp.c         - Sample application to demonstrate RTT bi-directional functionality.
+    - Main_RTT_PrintfTest.c      - Sample application to test RTT small printf implementation.
+    - Main_RTT_SpeedTestApp.c    - Sample application for measuring RTT performance. embOS needed.
+  - RTT
+    - SEGGER_RTT.c                - The RTT implementation.
+    - SEGGER_RTT.h                - Header for RTT implementation.
+    - SEGGER_RTT_Conf.h           - Pre-processor configuration for the RTT implementation.
+    - SEGGER_RTT_Printf.c         - Simple implementation of printf to write formatted strings via RTT.
+  - Syscalls
+    - RTT_Syscalls_GCC.c          - Low-level syscalls to retarget printf() to RTT with GCC / Newlib.
+    - RTT_Syscalls_IAR.c          - Low-level syscalls to retarget printf() to RTT with IAR compiler.
+    - RTT_Syscalls_KEIL.c         - Low-level syscalls to retarget printf() to RTT with KEIL/uVision compiler.
+    - RTT_Syscalls_SES.c          - Low-level syscalls to retarget printf() to RTT with SEGGER Embedded Studio.
+micro-ecc
+==========
+
+A small and fast ECDH and ECDSA implementation for 8-bit, 32-bit, and 64-bit processors.
+
+The old version of micro-ecc can be found in the "old" branch.
+
+Features
+--------
+
+ * Resistant to known side-channel attacks.
+ * Written in C, with optional GCC inline assembly for AVR, ARM and Thumb platforms.
+ * Supports 8, 32, and 64-bit architectures.
+ * Small code size.
+ * No dynamic memory allocation.
+ * Support for 4 standard curves: secp160r1, secp192r1, secp256r1, and secp256k1.
+ * BSD 2-clause license.
+
+Usage Notes
+-----------
+### Point Representation ###
+Compressed points are represented in the standard format as defined in http://www.secg.org/collateral/sec1_final.pdf; uncompressed points are represented in standard format, but without the `0x04` prefix. `uECC_make_key()`, `uECC_shared_secret()`, `uECC_sign()`, and `uECC_verify()` only handle uncompressed points; you can use `uECC_compress()` and `uECC_decompress()` to convert between compressed and uncompressed point representations.
+
+Private keys are represented in the standard format.
+
+### Using the Code ###
+
+I recommend just copying (or symlink) uECC.h, uECC.c, and the appropriate asm\_&lt;arch&gt;\_.inc (if any) into your project. Then just `#include "uECC.h"` to use the micro-ecc functions.
+
+For use with Arduino, you can just create a symlink to the `uECC` directory in your Arduino `libraries` directory. You can then use uECC just like any other Arduino library (uECC should show up in the **Sketch**=>**Import Library** submenu).
+
+See uECC.h for documentation for each function.
+
+### Compilation Notes ###
+
+ * Should compile with any C/C++ compiler that supports stdint.h (this includes Visual Studio 2013).
+ * If you want to change the defaults for `uECC_CURVE` and `uECC_ASM`, you must change them in your Makefile or similar so that uECC.c is compiled with the desired values (ie, compile uECC.c with `-DuECC_CURVE=uECC_secp256r1` or whatever).
+ * When compiling for a Thumb-1 platform with inline assembly enabled (ie, `uECC_ASM` is defined to `uECC_asm_small` or `uECC_asm_fast`), you must use the `-fomit-frame-pointer` GCC option (this is enabled by default when compiling with `-O1` or higher).
+ * When compiling for an ARM/Thumb-2 platform with fast inline assembly enabled (ie, `uECC_ASM` is defined to `uECC_asm_fast`), you must use the `-fomit-frame-pointer` GCC option (this is enabled by default when compiling with `-O1` or higher).
+ * When compiling for AVR with inline assembly enabled, you must have optimizations enabled (compile with `-O1` or higher).
+ * When building for Windows, you will need to link in the `advapi32.lib` system library.
+
+ARM Performance
+---------------
+
+All tests were built using gcc 4.8.2 with `-O3`, and were run on a Raspberry Pi B+. `uECC_ASM` was defined to `uECC_asm_fast` and `ECC_SQUARE_FUNC` was defined to `1` in all cases. All times are in milliseconds.
+
+<table>
+	<tr>
+		<th></th>
+		<th>secp160r1</th>
+		<th>secp192r1</th>
+		<th>secp256r1</th>
+		<th>secp256k1</th>
+	</tr>
+	<tr>
+		<td><em>ECDH:</em></td>
+		<td>2.3</td>
+		<td>2.7</td>
+		<td>7.9</td>
+		<td>6.5</td>
+	</tr>
+	<tr>
+		<td><em>ECDSA sign:</em></td>
+		<td>2.8</td>
+		<td>3.1</td>
+		<td>8.6</td>
+		<td>7.2</td>
+	</tr>
+	<tr>
+		<td><em>ECDSA verify:</em></td>
+		<td>2.7</td>
+		<td>3.2</td>
+		<td>9.2</td>
+		<td>7.0</td>
+	</tr>
+</table>
+
+AVR Performance
+---------------
+
+All tests were built using avr-gcc 4.8.1 with `-Os`, and were run on a 16 MHz ATmega256RFR2. Code size refers to the space used by micro-ecc code and data.
+
+#### ECDH (fast) ####
+
+In these tests, `uECC_ASM` was defined to `uECC_asm_fast` and `ECC_SQUARE_FUNC` was defined to `1` in all cases.
+
+<table>
+	<tr>
+		<th></th>
+		<th>secp160r1</th>
+		<th>secp192r1</th>
+		<th>secp256r1</th>
+		<th>secp256k1</th>
+	</tr>
+	<tr>
+		<td><em>ECDH time (ms):</em></td>
+		<td>470</td>
+		<td>810</td>
+		<td>2220</td>
+		<td>1615</td>
+	</tr>
+	<tr>
+		<td><em>Code size (bytes):</em></td>
+		<td>10768</td>
+		<td>13112</td>
+		<td>20886</td>
+		<td>21126</td>
+	</tr>
+</table>
+
+#### ECDH (small) ####
+
+In these tests, `uECC_ASM` was defined to `uECC_asm_small` and `ECC_SQUARE_FUNC` was defined to `0` in all cases.
+
+<table>
+	<tr>
+		<th></th>
+		<th>secp160r1</th>
+		<th>secp192r1</th>
+		<th>secp256r1</th>
+		<th>secp256k1</th>
+	</tr>
+	<tr>
+		<td><em>ECDH time (ms):</em></td>
+		<td>1250</td>
+		<td>1810</td>
+		<td>4790</td>
+		<td>4700</td>
+	</tr>
+	<tr>
+		<td><em>Code size (bytes):</em></td>
+		<td>3244</td>
+		<td>3400</td>
+		<td>5274</td>
+		<td>3426</td>
+	</tr>
+</table>
+
+#### ECDSA (fast) ####
+
+In these tests, `uECC_ASM` was defined to `uECC_asm_fast` and `ECC_SQUARE_FUNC` was defined to `1` in all cases.
+
+<table>
+	<tr>
+		<th></th>
+		<th>secp160r1</th>
+		<th>secp192r1</th>
+		<th>secp256r1</th>
+		<th>secp256k1</th>
+	</tr>
+	<tr>
+		<td><em>ECDSA sign time (ms):</em></td>
+		<td>555</td>
+		<td>902</td>
+		<td>2386</td>
+		<td>1773</td>
+	</tr>
+	<tr>
+		<td><em>ECDSA verify time (ms):</em></td>
+		<td>590</td>
+		<td>990</td>
+		<td>2650</td>
+		<td>1800</td>
+	</tr>
+	<tr>
+		<td><em>Code size (bytes):</em></td>
+		<td>13246</td>
+		<td>14798</td>
+		<td>22594</td>
+		<td>22826</td>
+	</tr>
+</table>
+
+#### ECDSA (small) ####
+
+In these tests, `uECC_ASM` was defined to `uECC_asm_small` and `ECC_SQUARE_FUNC` was defined to `0` in all cases.
+
+<table>
+	<tr>
+		<th></th>
+		<th>secp160r1</th>
+		<th>secp192r1</th>
+		<th>secp256r1</th>
+		<th>secp256k1</th>
+	</tr>
+	<tr>
+		<td><em>ECDSA sign time (ms):</em></td>
+		<td>1359</td>
+		<td>1931</td>
+		<td>4998</td>
+		<td>4904</td>
+	</tr>
+	<tr>
+		<td><em>ECDSA verify time (ms):</em></td>
+		<td>1515</td>
+		<td>2160</td>
+		<td>5700</td>
+		<td>5220</td>
+	</tr>
+	<tr>
+		<td><em>Code size (bytes):</em></td>
+		<td>5690</td>
+		<td>5054</td>
+		<td>6980</td>
+		<td>5080</td>
+	</tr>
+</table>
+The provisioning tools are designed to run on a Linux host machine with the following requirements: 
+- Linux – Kernel Version 4.15.0 – 107-generic (Ubuntu 16.04.2). 
+- OpenSSL – 1.0.2g 
+- Python – 3.5.2 
+
+Please refer to "Apollo4 and Apollo4 Blue OEM Provisioning Process and Tools" User's Guide on how to use these tools.
+This README is just to briefly describe the sample configs bundled with the SDK.
+
+OEM Provisioning: 
+=================
+The OPT (OEM Provisioning Tool) is a Ambiq signed tool which is downloaded and executed on the chip during device production in the OEM manufacturing facility.
+The tool is downloaded in SRAM at address 0x10030000, and the OEM encrypted assets (generated using provided tools), at the SRAM address 0x10037000.
+After downloading these 2 blobs, the device needs to be reseti (POR). After a successful OEM provisioning, device is transitioned to secure LCS.
+
+The OPT tool is available at the following location:
+./oem_prov_tool/opt_image_pkg.bin
+
+OEM Provisioning Data is generated using the provided tools.
+
+AmbiqSuite SDK includes couple of sample provisioning configurations, and pregenerated provisioning blobs corresponding to the same as a reference.
+
+- oem_asset_prov_utils/oem_asset_package/dmpu_prov_data_blob_nonsec.bin:
+    - Corresponds to the OTP configuration as defined in: 
+        oem_asset_prov_utils/oem_asset_package/am_config/am_dmpu_data_gen_nonsec.cfg
+        oem_asset_prov_utils/oem_asset_package/am_config/oem_asset_gen_nonsec.cfg
+    - Noteworthy configurations:
+        - SecureBoot Mode off
+        - Boot Override set for Pin 0 - Active Low
+        - Wired Update enabled for UART 0
+        - OTP DCU lock mask set to all 0's (None of the DCU's will be locked)
+        - No Copy/Write Protections
+- oem_asset_prov_utils/oem_asset_package/dmpu_prov_data_blob_sec.bin
+    - Corresponds to the OTP configuration as defined in: 
+        oem_asset_prov_utils/oem_asset_package/am_config/am_dmpu_data_gen_sec.cfg
+        oem_asset_prov_utils/oem_asset_package/am_config/oem_asset_gen_sec.cfg
+    - Noteworthy configurations:
+        - SecureBoot Mode ON (Will only boot with valid cert chain)
+        - Boot Override set for Pin 0 - Active Low
+        - Wired Update enabled for UART 0
+        - Security Policy set to enforce Authentication and Encryption for OTA/Wired updates
+        - OTP DCU lock mask set to all 0's (None of the DCU's will be locked)
+        - No Copy/Write Protections
+
+Both the sample configurations use dummy keys as generated using provided tools:
+- am_oem_key_gen_util/oemRSAKeys (For Asymm keys)
+- am_oem_key_gen_util/oemAESKeys (For KCE and KCP)
+- oem_asset_prov_utils/oem_asset_package/inputData/keyBank*.bin (For OTP keybank)
+
+The keybank area is configured to be accessible by Bootloader, as well as enabled for runtime access using the master keys, as programmed in
+OTP_CUSTOTP_READ_KEY* & OTP_CUSTOTP_PROG_KEY* in respective cfg files (oem_asset_gen*.cfg)
+
+Secure Debug Certificates:
+==========================
+Secure Debug Certificates are generated in accordance with the procedure outlined in the document.
+
+AmbiqSuite SDK includes sample configurations as a reference.
+- Enable All Debug Configuration: Enables all the OEM controlled Debug settings.
+        - Valid only for Secure LCS
+        - This assumes cert_utils/cert_gen_utils/inputData/soc_id1.bin has be initialized with right values as corresponding to the chip
+        - Configs:
+                - cert_utils/cert_gen_utils/am_config/am_oem_dbg_enabler_cert_all.cfg
+                - cert_utils/cert_gen_utils/am_config/am_oem_dbg_developer_cert_all.cfg
+- RMA: Initiates OEM part of the RMA process
+        - Valid only for Secure LCS
+        - This assumes cert_utils/cert_gen_utils/inputData/soc_id1.bin has be initialized with right values as corresponding to the chip
+        - Configs:
+                - cert_utils/cert_gen_utils/am_config/am_oem_dbg_enabler_cert_rma.cfg
+                - cert_utils/cert_gen_utils/am_config/am_oem_dbg_developer_cert_rma.cfg
+Brief info on various files in this directory:
+==============================================
+Scripts/configs:
+================
+- helper scripts: These are used by other scripts
+        - am_defines.py, apollo4b_info0.py, apollo4b_keys.py, key_table.py
+- create_info0.py => Should be used to generate INFO0
+- create_cust_image_blob.py => Used to generate various OTA or wired images for Ambiq SBL
+        - It requires keys.ini for keys information, and an operation specific ini file to generate the required image
+- uart_wired_update.py => Used to interact with Ambiq SBL as part of Wired update
+- sample: This folder contains various sample ini files. The required files should be copied to the parent directory and edited to be used with create_cust_image_blob.py
+        - keys.ini => Determines location of key assets
+        - wired.ini => Sample ini file to download a blob to a fixed location in the device
+        - wired_ota.ini => Sample ini file to download a preconstructed OTA image to a temp place in device, and trigger OTA on reset
+        - firmware.ini => Generate OTA image corresponding to a firmware update (Can be secure or non-secure)
+        - oem_chain.ini => Generate OEM Cert chain update
+- sbl_updates: This folder contains the SBL OTA images to do on field updates of Ambiq SBL
+        - Depending on the SBL version, each OTA consists of two images: encrypted_sbl0.bin and sbl_ota.bin
+        - These files should be copied to tools/apollo4b_scripts, to be used with supplied JLink scripts for SBL OTA
+- oem_tools_package: This folder contains various key, asset and certificate generation utilities for provisioning and runtime usage
+
+Jlink scripts:
+==============
+- jlink-prog-info0.txt => Sample script to program INFO0 (info0.bin generated using create_info0.py)
+- jlink-update-firmware.txt => Sample script to initiate firmware OTA (OTA blob generated using create_cust_image_blob.py using firmware.ini)
+- jlink-update-patch.txt => Sample script to apply Trim patches provided by Ambiq
+- jlink-update-cchain.txt => Sample script to initiate OEM Cert Chain update (Blob generated using create_cust_image_blob.py using oem_chain.ini)
+- jlink-prog-sbl*.txt => Sample script to initiate SBL OTA (See more details below)
+
+SBL OTA Notes:
+==============
+Process of upgrading SBL depends on the location of current SBL.
+By default SBL is installed at 0x8000
+
+However, after the first upgrade SBL will be running from 0x10000
+The location of SBL changes between 0x8000 and 0x10000 on each upgrade.
+
+Upgrading SBL requires downloading two blobs - one with OTA metadat information (that is loaded in general MRAM area), and other is the signed/encrypted SBL image itself, which is directly loaded to the destination (i.e. to the designated next SBL location, be it 0x10000 or 0x8000)
+
+So, if the current SBL is running at 0x8000, we need to download the update to 0x10000 and vice versa.
+
+You can find out the location of current SBL by looking at the SBL SWO logs:
+
+SecureBoot SBL_apollo4b_v1_test ver:0x1(0xa5b0) running with VTOR @ 0x8000
+OR
+SBL_ap4bv3.0 ver:0.3(0xa640) @ 0x8000
+
+This indicates current SBL is running from 0x8000 (slot 0)
+This in turn implies that the update needs to be loaded to slot 1
+
+Programmatically, the location of the address where the update needs to be loaded can be determines by calling:
+am_hal_security_get_info(). pSecInfo->sblStagingAddr identifies the address
+
+Use the following script, depending on which slot you want to load the SBL to:
+
+- To load the update to slot 1 (i.e. if current SBL is running at 0x8000) use jlink-prog-sbl1.txt
+ => After successful upgrade, SBL should be running from 0x10000
+
+- To load the update to slot 0 (i.e. if current SBL is running at 0x10000) use jlink-prog-sbl0.txt
+ => After successful upgrade SBL should be running from 0x8000
+
+These scripts use images encrypted_sbl0.bin and sbl_ota.bin, and expect them to be in same directory.
+Please edit the scripts accordingly, if that’s not the case.
