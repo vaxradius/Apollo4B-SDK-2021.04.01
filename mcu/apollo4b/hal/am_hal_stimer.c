@@ -45,7 +45,7 @@
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 // POSSIBILITY OF SUCH DAMAGE.
 //
-// This is part of revision b0-release-20210111-833-gc25608de46 of the AmbiqSuite Development Package.
+// This is part of revision b0-release-20210111-995-g9f4c242722 of the AmbiqSuite Development Package.
 //
 //*****************************************************************************
 
@@ -145,7 +145,6 @@ am_hal_stimer_reset_config(void)
     STIMER->SNVR0       = 0;
     STIMER->SNVR1       = 0;
     STIMER->SNVR2       = 0;
-    STIMER->SNVR3       = 0;
     STIMER->STMINTEN    = 0;
     STIMER->STMINTSTAT   = 0;
     STIMER->STMINTCLR    = 0xFFF;

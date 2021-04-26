@@ -45,7 +45,7 @@
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 // POSSIBILITY OF SUCH DAMAGE.
 //
-// This is part of revision b0-release-20210111-833-gc25608de46 of the AmbiqSuite Development Package.
+// This is part of revision b0-release-20210111-995-g9f4c242722 of the AmbiqSuite Development Package.
 //
 //*****************************************************************************
 #ifndef AM_HAL_MRAM_H
@@ -264,6 +264,20 @@ am_hal_mram_main_words_program(uint32_t ui32ProgramKey, uint32_t *pui32Src,
 //
 //*****************************************************************************
 extern int am_hal_mram_info_read(uint32_t ui32InfoSpace, uint32_t ui32Offset, uint32_t ui32NumWords, uint32_t *pui32Dst);
+
+//*****************************************************************************
+//
+//! @brief Initialize MRAM for DeepSleep.
+//!
+//! This function implements a workaround required for Apollo4 B0 parts in
+//! order to fix the MRAM DeepSleep config params.
+//!
+//! @param none
+//!
+//! @return 0 for success, non-zero for failure.                                                6
+//
+//*****************************************************************************
+extern int am_hal_mram_ds_init(void);
 
 
 #ifdef __cplusplus

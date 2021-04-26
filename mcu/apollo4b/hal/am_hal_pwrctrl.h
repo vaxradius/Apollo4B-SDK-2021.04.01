@@ -45,7 +45,7 @@
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 // POSSIBILITY OF SUCH DAMAGE.
 //
-// This is part of revision b0-release-20210111-833-gc25608de46 of the AmbiqSuite Development Package.
+// This is part of revision b0-release-20210111-995-g9f4c242722 of the AmbiqSuite Development Package.
 //
 //*****************************************************************************
 
@@ -63,6 +63,12 @@ extern "C"
 #define AM_HAL_PWRCTRL_VDDF_BOOST_DELAY     20
 #define AM_HAL_PWRCTRL_VDDC_BOOST_DELAY     20
 
+//
+// Option for when to boost VDDF
+//      0 = boost VDDF only when switching to HP mode (default).
+//      1 = boost VDDF together with VDDC when initialize SIMOBUCK in LP mode
+//
+#define AM_HAL_PWRCTL_BOOST_FOR_BOTH_LP_HP  0
 
 //*****************************************************************************
 //

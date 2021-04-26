@@ -45,7 +45,7 @@
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 // POSSIBILITY OF SUCH DAMAGE.
 //
-// This is part of revision b0-release-20210111-833-gc25608de46 of the AmbiqSuite Development Package.
+// This is part of revision b0-release-20210111-995-g9f4c242722 of the AmbiqSuite Development Package.
 //
 //*****************************************************************************
 
@@ -65,7 +65,7 @@
 volatile uint32_t g_ui32BusWriteFlush;
 
 //
-// Extern some variables that may be needed by other HAL modules.
+// Extern some variables needed in this module.
 //
 extern uint32_t g_ui32origSimobuckVDDCtrim;
 extern bool     g_bVDDCbuckboosted;
@@ -124,7 +124,7 @@ am_hal_sysctrl_sleep(bool bSleepDeep)
             //  be something other than 0xFFFFFFFF).
             // Then revert the trim to the original value before deepsleep.
             //
-            MCUCTRL->SIMOBUCK15_b.SIMOBUCKTRIMLATCHOVER = 1;
+            MCUCTRL->SIMOBUCK15_b.TRIMLATCHOVER = 1;
             ui32VDDCsave = MCUCTRL->VREFGEN2_b.TVRGVREFTRIM;
             MCUCTRL->VREFGEN2_b.TVRGVREFTRIM = g_ui32origSimobuckVDDCtrim;
             am_hal_delay_us(AM_HAL_PWRCTRL_VDDC_BOOST_DELAY);
@@ -163,7 +163,7 @@ am_hal_sysctrl_sleep(bool bSleepDeep)
         //
         // Restore the boosted trim.
         //
-        MCUCTRL->SIMOBUCK15_b.SIMOBUCKTRIMLATCHOVER = 1;
+        MCUCTRL->SIMOBUCK15_b.TRIMLATCHOVER = 1;
         MCUCTRL->VREFGEN2_b.TVRGVREFTRIM = ui32VDDCsave;
         am_hal_delay_us(AM_HAL_PWRCTRL_VDDC_BOOST_DELAY);
     }
