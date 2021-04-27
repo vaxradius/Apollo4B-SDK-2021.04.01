@@ -45,7 +45,7 @@
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 // POSSIBILITY OF SUCH DAMAGE.
 //
-// This is part of revision b0-release-20210111-995-g9f4c242722 of the AmbiqSuite Development Package.
+// This is part of revision b0-release-20210111-833-gc25608de46 of the AmbiqSuite Development Package.
 //
 //*****************************************************************************
 #include <stdint.h>
@@ -71,13 +71,6 @@
 #define AM_HAL_PWRCTL_HPLP_WA
 #define AM_HAL_PWRCTL_CRYPTO_WA
 
-//
-// Option for keeping portion of Analog in active mode during Deepsleep.
-//      0 = Leave inactive (default).
-//      1 = Set trims to keep active.  Uses extra power in Deepsleep.
-//
-#define AM_HAL_PWRCTL_KEEP_ANA_ACTIVE_IN_DS     0
-
 #ifdef AM_HAL_PWRCTL_CRYPTO_WA
 #define AM_HAL_PWRCTL_CRYPTO_DELAY 16
 #endif
@@ -89,24 +82,15 @@
 //
 // Define max values of some particular fields
 //
-#define MAX_BUCKVDDFTRIM    _FLD2VAL(MCUCTRL_SIMOBUCK12_ACTTRIMVDDF, MCUCTRL_SIMOBUCK12_ACTTRIMVDDF_Msk)
+#define MAX_BUCKVDDFTRIM    _FLD2VAL(MCUCTRL_SIMOBUCK12_SIMOBUCKACTTRIMVDDF, MCUCTRL_SIMOBUCK12_SIMOBUCKACTTRIMVDDF_Msk)
 #define MAX_LDOVDDFTRIM     _FLD2VAL(MCUCTRL_LDOREG2_MEMLDOACTIVETRIM, MCUCTRL_LDOREG2_MEMLDOACTIVETRIM_Msk)
-#define MAX_BUCKVDDCTRIM    _FLD2VAL(MCUCTRL_VREFGEN2_TVRGVREFTRIM, MCUCTRL_VREFGEN2_TVRGVREFTRIM_Msk)
-#define MAX_LDOVDDCTRIM     _FLD2VAL(MCUCTRL_LDOREG1_CORELDOACTIVETRIM, MCUCTRL_LDOREG1_CORELDOACTIVETRIM_Msk)
-
-//
-// Define the number of steps to bump the simobuck VDDF trims for
-// PCM and pre-PCM parts.
-//
-#define BUCK_VDDF_BOOST_STEPS_PCM       7   // PCM parts
-#define BUCK_VDDF_BOOST_STEPS_PREPCM    3   // Pre-PCM parts
+#define MAX_VDDCTRIM        _FLD2VAL(MCUCTRL_VREFGEN2_TVRGVREFTRIM, MCUCTRL_VREFGEN2_TVRG2TEMPCOTRIM_Msk)
 
 //
 // Global State Variables for the VDDF and VDDC boosting
 //
 am_hal_pwrctrl_mcu_mode_e g_eCurrPwrMode = AM_HAL_PWRCTRL_MCU_MODE_LOW_POWER;
 uint32_t g_ui32TrimVer              = 0xFFFFFFFF;
-uint32_t g_ui32TrimLVT              = 0xFFFFFFFF;
 
 uint32_t g_ui32origSimobuckVDDFtrim = 0xFFFFFFFF;
 uint32_t g_ui32origSimobuckVDDCtrim = 0xFFFFFFFF;
@@ -434,7 +418,7 @@ uint32_t crypto_powerdown(void)
 // ****************************************************************************
 
 static uint32_t g_WaitTimerDuration = 0;
-#define AM_HAL_WRITE_WAIT_TIMER  13
+
 // Using internal non-published function - as Timer13 is reserved for workaround
 extern uint32_t internal_timer_config(uint32_t ui32TimerNumber,
                                       am_hal_timer_config_t *psTimerConfig);
@@ -478,114 +462,6 @@ TrimVersionGet(uint32_t *pui32TrimVer)
 
 } // TrimVersionGet()
 
-//*****************************************************************************
-//
-// Function to determine the chip's LVT TRIM value.
-//
-//*****************************************************************************
-static uint32_t
-TrimLVTGet(uint16_t *pui16LVTtrimHigh, uint16_t *pui16LVTtrimLow)
-{
-    uint32_t ui32Ret;
-    uint16_t ui16LVTtrimHigh;
-    uint16_t ui16LVTtrimLow;
-
-    //
-    // Get the LVT TRIM value and set the global variable.
-    // This only needs to be done and verified once.
-    //
-    ui32Ret = am_hal_mram_info_read(1, AM_REG_INFO1_LVT_TRIMCODE_O / 4, 1, &g_ui32TrimLVT);
-    if ( (ui32Ret != 0) || (g_ui32TrimLVT == 0xFFFFFFFF) )
-    {
-        ui16LVTtrimHigh = 0xFFFF;
-        ui16LVTtrimLow  = 0xFFFF;
-        ui32Ret = AM_HAL_STATUS_FAIL;
-    }
-    else
-    {
-        ui16LVTtrimHigh = _FLD2VAL(AM_REG_INFO1_LVT_TRIMCODE_HIGH, g_ui32TrimLVT);
-        ui16LVTtrimLow  = _FLD2VAL(AM_REG_INFO1_LVT_TRIMCODE_LOW,  g_ui32TrimLVT);
-        ui32Ret = AM_HAL_STATUS_SUCCESS;
-    }
-
-    if ( pui16LVTtrimHigh && pui16LVTtrimLow )
-    {
-        *pui16LVTtrimHigh = ui16LVTtrimHigh;
-        *pui16LVTtrimLow  = ui16LVTtrimLow;
-        return ui32Ret;
-    }
-    else
-    {
-        return AM_HAL_STATUS_INVALID_ARG;
-    }
-
-} // TrimLVTGet()
-
-//*****************************************************************************
-//
-//  VDDF_simobuck_boost(bool bBoostOn)
-//      bBoostOn = true to do the boost,
-//                 false to restore the boost to the original value.
-//
-//*****************************************************************************
-static uint32_t
-VDDF_simobuck_boost(bool bBoostOn)
-{
-    uint32_t ui32booststeps, ui32TrimVer, ui32acttrimvddf;
-
-    if ( g_ui32origSimobuckVDDFtrim == 0xFFFFFFFF )
-    {
-        //
-        // Get and save the original value the very first time.
-        //
-        g_ui32origSimobuckVDDFtrim = MCUCTRL->SIMOBUCK12_b.ACTTRIMVDDF;
-    }
-
-    if ( bBoostOn == false )
-    {
-        //
-        // Restore the original SIMOBUCK trim and return
-        //
-        MCUCTRL->SIMOBUCK15_b.TRIMLATCHOVER = 1;
-        AM_CRITICAL_BEGIN
-        MCUCTRL->SIMOBUCK12_b.ACTTRIMVDDF = g_ui32origSimobuckVDDFtrim;
-
-        //
-        // Delay to give voltage supply some time to transition to the new level
-        //
-        am_hal_delay_us(AM_HAL_PWRCTRL_VDDF_BOOST_DELAY);
-        AM_CRITICAL_END
-
-        return AM_HAL_STATUS_SUCCESS;
-    }
-
-    if ( APOLLO4_GE_B1 ) //
-    {
-        TrimVersionGet(&ui32TrimVer);
-        ui32booststeps = ( ui32TrimVer >= 6 ) ? BUCK_VDDF_BOOST_STEPS_PCM :
-                                                BUCK_VDDF_BOOST_STEPS_PREPCM;
-
-        //
-        // Increase VDDF the appropriate number of steps (or max it out).
-        //
-        MCUCTRL->SIMOBUCK15_b.TRIMLATCHOVER = 1;
-
-        ui32acttrimvddf = g_ui32origSimobuckVDDFtrim <= (MAX_BUCKVDDFTRIM - ui32booststeps) ?
-                            (g_ui32origSimobuckVDDFtrim + ui32booststeps) : MAX_BUCKVDDFTRIM;
-
-        AM_CRITICAL_BEGIN
-        MCUCTRL->SIMOBUCK12_b.ACTTRIMVDDF = ui32acttrimvddf;
-
-        //
-        // Delay to give voltage supply some time to transition to the new level
-        //
-        am_hal_delay_us(AM_HAL_PWRCTRL_VDDF_BOOST_DELAY);
-        AM_CRITICAL_END
-    }
-
-    return AM_HAL_STATUS_SUCCESS;
-
-} // VDDF_simobuck_boost()
 
 //*****************************************************************************
 //
@@ -606,7 +482,7 @@ am_hal_util_write_and_wait_timer_init(uint32_t ui32Delayus)
     TimerConfig.ui32Compare0 = 0xFFFFFFFF;
     TimerConfig.ui32PatternLimit = 0;
     TimerConfig.ui32Compare1 = ui32Delayus * 6000000 / 1000000;
-    ui32Status = am_hal_timer_config(AM_HAL_WRITE_WAIT_TIMER, &TimerConfig);
+    ui32Status = internal_timer_config(AM_HAL_WRITE_WAIT_TIMER, &TimerConfig);
     if ( ui32Status != AM_HAL_STATUS_SUCCESS )
     {
        return ui32Status;
@@ -879,7 +755,7 @@ backout_mcu_mode_select(pwrctrl_state_restore_t *psSettings)
         //
         // Restore the original trim values
         //
-        MCUCTRL->SIMOBUCK12_b.ACTTRIMVDDF = g_ui32origSimobuckVDDFtrim;
+        MCUCTRL->SIMOBUCK12_b.SIMOBUCKACTTRIMVDDF = g_ui32origSimobuckVDDFtrim;
 
         //
         // Delay to give voltage supply some time to transition to the new level
@@ -904,101 +780,6 @@ backout_mcu_mode_select(pwrctrl_state_restore_t *psSettings)
 } // backout_mcu_mode_select()
 
 
-static uint32_t
-vddc_vddf_boost(void)
-{
-    uint32_t ui32Status;
-    bool bDoVDDCboost = false;
-    uint32_t ui32TrimVer = 0xFFFFFFFF;
-    uint16_t ui16LVTtrimHigh = 0xFFFF;
-    uint16_t ui16LVTtrimLow = 0xFFFF;
-    uint32_t VDDCboostCode = 0;
-
-    //
-    // Get the Apollo4 device trim version.
-    //
-    ui32Status = TrimVersionGet(&ui32TrimVer);
-    if ( ui32Status != AM_HAL_STATUS_SUCCESS )
-    {
-        return ui32Status;
-    }
-
-    if ( APOLLO4_GE_B1 && (ui32TrimVer != 0) )
-    {
-        if ( ui32TrimVer >= 6 )
-        {
-            //
-            // Get the Apollo4 LVT trim value.
-            //
-            ui32Status = TrimLVTGet(&ui16LVTtrimHigh, &ui16LVTtrimLow);
-            if (AM_HAL_STATUS_SUCCESS != ui32Status)
-            {
-                return ui32Status;
-            }
-
-            bDoVDDCboost = true;
-
-            if ( (ui16LVTtrimLow < 240) && (ui16LVTtrimHigh < 240) )
-            {
-                VDDCboostCode = 43;     // ~86mV boost
-            }
-            else
-            {
-                VDDCboostCode = 23;     // ~46mV boost
-            }
-        }
-        else
-        {
-            bDoVDDCboost = false;
-        }
-    }
-
-#if AM_HAL_PWRCTL_BOOST_FOR_BOTH_LP_HP
-    VDDF_simobuck_boost(true);
-#endif  // AM_HAL_PWRCTL_BOOST_FOR_BOTH_LP_HP
-
-    if ( bDoVDDCboost )
-    {
-        if ( g_ui32origSimobuckVDDCtrim == 0xFFFFFFFF )
-        {
-
-#if !AM_HAL_PWRCTL_BOOST_FOR_BOTH_LP_HP
-            if ( !g_bVDDCbuckboosted )
-            {
-                //
-                // Set g_bVDDCbuckboosted to be true for VDDC voltage reverting before entering deepsleep
-                //
-                g_bVDDCbuckboosted =  true;
-            }
-#endif  // !AM_HAL_PWRCTL_BOOST_FOR_BOTH_LP_HP
-
-            //
-            // Get and save the original value the very first time.
-            // Apply voltage boost only for the very first time.
-            //
-            g_ui32origSimobuckVDDCtrim = MCUCTRL->VREFGEN2_b.TVRGVREFTRIM;
-
-            //
-            // SIMOBUCK trim adjustment
-            //
-            MCUCTRL->SIMOBUCK15_b.TRIMLATCHOVER = 1;
-            uint32_t ui32newvalVDDC = g_ui32origSimobuckVDDCtrim <= (MAX_BUCKVDDCTRIM - VDDCboostCode) ?
-                            g_ui32origSimobuckVDDCtrim + VDDCboostCode : MAX_BUCKVDDCTRIM;
-
-            AM_CRITICAL_BEGIN
-            MCUCTRL->VREFGEN2_b.TVRGVREFTRIM = ui32newvalVDDC;
-
-            //
-            // Delay to give voltage supply some time to transition to the new level
-            //
-            am_hal_delay_us(AM_HAL_PWRCTRL_VDDC_BOOST_DELAY);
-            AM_CRITICAL_END
-        }
-    }
-
-    return AM_HAL_STATUS_SUCCESS;
-}
-
 // ****************************************************************************
 //
 //  am_hal_pwrctrl_mcu_mode_select()
@@ -1008,8 +789,8 @@ vddc_vddf_boost(void)
 uint32_t
 am_hal_pwrctrl_mcu_mode_select(am_hal_pwrctrl_mcu_mode_e ePowerMode)
 {
-    bool bApollo4B0;
-    uint32_t ui32Status;
+    bool bApollo4B0, bDoVDDFboost;
+    uint32_t ui32Status, ui32TrimVer;
     pwrctrl_state_restore_t sSettings =
     {
         .ePowerMode = ePowerMode,
@@ -1043,6 +824,9 @@ am_hal_pwrctrl_mcu_mode_select(am_hal_pwrctrl_mcu_mode_e ePowerMode)
     }
 
     g_eCurrPwrMode = ePowerMode;
+
+    TrimVersionGet(&ui32TrimVer);
+    bDoVDDFboost = ( APOLLO4_GE_B1  &&  (ui32TrimVer >= 6)  ) ? true : false;
     bApollo4B0   = APOLLO4_B0;
 
     if ( bApollo4B0 )
@@ -1077,16 +861,43 @@ am_hal_pwrctrl_mcu_mode_select(am_hal_pwrctrl_mcu_mode_e ePowerMode)
     //
     // Set the MCU power mode.
     //
-#if !AM_HAL_PWRCTL_BOOST_FOR_BOTH_LP_HP
-    if ( ePowerMode == AM_HAL_PWRCTRL_MCU_MODE_HIGH_PERFORMANCE )
+    if ( bDoVDDFboost )
     {
-        //
-        // Boost VDDF for High Performance mode
-        //
-        sSettings.ui32StepMask |= 0x0002;
-        VDDF_simobuck_boost(true);
+        if ( g_ui32origSimobuckVDDFtrim == 0xFFFFFFFF )
+        {
+            //
+            // Get and save the original value the very first time.
+            //
+            g_ui32origSimobuckVDDFtrim = MCUCTRL->SIMOBUCK12_b.SIMOBUCKACTTRIMVDDF;
+        }
+
+        if ( ePowerMode == AM_HAL_PWRCTRL_MCU_MODE_HIGH_PERFORMANCE )
+        {
+            uint32_t ui32newval;
+
+            //
+            // Increase VDDF up by 7 steps (or max it out).
+            //
+            sSettings.ui32StepMask |= 0x0002;
+
+            //
+            // SIMOBUCK trim adjustment
+            //
+            MCUCTRL->SIMOBUCK15_b.SIMOBUCKTRIMLATCHOVER = 1;
+
+            ui32newval = g_ui32origSimobuckVDDFtrim <= (MAX_BUCKVDDFTRIM - 7) ?
+                            g_ui32origSimobuckVDDFtrim + 7 : MAX_BUCKVDDFTRIM;
+
+            AM_CRITICAL_BEGIN
+            MCUCTRL->SIMOBUCK12_b.SIMOBUCKACTTRIMVDDF = ui32newval;
+
+            //
+            // Delay to give voltage supply some time to transition to the new level
+            //
+            am_hal_delay_us(AM_HAL_PWRCTRL_VDDF_BOOST_DELAY);
+            AM_CRITICAL_END
+        }
     }
-#endif // !AM_HAL_PWRCTL_BOOST_FOR_BOTH_LP_HP
 
 #ifdef AM_HAL_PWRCTL_HPLP_WA
     ui32Status = am_hal_util_write_and_wait((uint32_t*)&PWRCTRL->MCUPERFREQ,
@@ -1125,15 +936,21 @@ am_hal_pwrctrl_mcu_mode_select(am_hal_pwrctrl_mcu_mode_e ePowerMode)
         return ui32Status;
     }
 
-#if !AM_HAL_PWRCTL_BOOST_FOR_BOTH_LP_HP
-    if ( ePowerMode == AM_HAL_PWRCTRL_MCU_MODE_LOW_POWER )
+    if ( bDoVDDFboost  &&  (ePowerMode == AM_HAL_PWRCTRL_MCU_MODE_LOW_POWER) )
     {
+        AM_CRITICAL_BEGIN
+
         //
-        // Revert the boost VDDF when transitioning to Low Power  mode
+        // Restore the original SIMOBUCK trim
         //
-        VDDF_simobuck_boost(false);
+        MCUCTRL->SIMOBUCK12_b.SIMOBUCKACTTRIMVDDF = g_ui32origSimobuckVDDFtrim;
+
+        //
+        // Delay to give voltage supply some time to transition to the new level
+        //
+        am_hal_delay_us(AM_HAL_PWRCTRL_VDDF_BOOST_DELAY);
+        AM_CRITICAL_END
     }
-#endif  // AM_HAL_PWRCTL_BOOST_FOR_BOTH_LP_HP
 
     if ( bApollo4B0 )
     {
@@ -2077,11 +1894,6 @@ am_hal_pwrctrl_low_power_init(void)
     bool bDoVDDCLDOboost;
 
     //
-    // Fix the MRAM DeepSleep params
-    //
-    am_hal_mram_ds_init();
-
-    //
     // Set the default memory configuration.
     //
     am_hal_pwrctrl_mcu_memory_config((am_hal_pwrctrl_mcu_memory_config_t *)&g_DefaultMcuMemCfg);
@@ -2136,20 +1948,6 @@ am_hal_pwrctrl_low_power_init(void)
 #endif
 
     //
-    // Initialize DSPRAM, SSRAM trims for proper retention operation.
-    //
-    MCUCTRL->PWRSW0 |=  _VAL2FLD(MCUCTRL_PWRSW0_PWRSWVDDMDSP0DYNSEL, 1)     |
-                        _VAL2FLD(MCUCTRL_PWRSW0_PWRSWVDDMDSP0OVERRIDE, 1)   |
-                        _VAL2FLD(MCUCTRL_PWRSW0_PWRSWVDDMDSP1DYNSEL, 1)     |
-                        _VAL2FLD(MCUCTRL_PWRSW0_PWRSWVDDMDSP1OVERRIDE, 1)   |
-                        _VAL2FLD(MCUCTRL_PWRSW0_PWRSWVDDMLDYNSEL, 1)        |
-                        _VAL2FLD(MCUCTRL_PWRSW0_PWRSWVDDMLOVERRIDE, 1)      |
-                        _VAL2FLD(MCUCTRL_PWRSW0_PWRSWVDDMCPUDYNSEL, 1)      |
-                        _VAL2FLD(MCUCTRL_PWRSW0_PWRSWVDDMCPUOVERRIDE, 1)    |
-                        _VAL2FLD(MCUCTRL_PWRSW0_PWRSWVDDMDSP0STATSEL, 1)    |
-                        _VAL2FLD(MCUCTRL_PWRSW0_PWRSWVDDMDSP1STATSEL, 1);
-
-    //
     // If LDO, do some trim updates.
     //
     if ( PWRCTRL->VRSTATUS_b.SIMOBUCKST != PWRCTRL_VRSTATUS_SIMOBUCKST_ACT )
@@ -2182,8 +1980,8 @@ am_hal_pwrctrl_low_power_init(void)
                 //
                 // Increase VDDC up by 10 steps (~40mv), or max it out.
                 //
-                ui32VDDCtrim = (ui32VDDCtrim <= (MAX_LDOVDDCTRIM - 10)) ?
-                               (ui32VDDCtrim + 10) : MAX_LDOVDDCTRIM;
+                ui32VDDCtrim = (ui32VDDCtrim <= (MAX_VDDCTRIM - 10)) ?
+                               (ui32VDDCtrim + 10) : MAX_VDDCTRIM;
 
                 AM_CRITICAL_BEGIN
                 MCUCTRL->LDOREG1_b.CORELDOACTIVETRIM = ui32VDDCtrim;
@@ -2211,125 +2009,74 @@ uint32_t
 am_hal_pwrctrl_control(am_hal_pwrctrl_control_e eControl, void *pArgs)
 {
     uint32_t ui32ReturnStatus = AM_HAL_STATUS_SUCCESS;
+    uint32_t ui32TrimVer, ui32VDDCtrim;
+    bool bDoVDDCboost;
 
     switch ( eControl )
     {
         case AM_HAL_PWRCTRL_CONTROL_SIMOBUCK_INIT:
+            //
+            // Enable VDDC, VDDF, and VDDS.
+            //
+            MCUCTRL->SIMOBUCK0 =
+                _VAL2FLD(MCUCTRL_SIMOBUCK0_SIMOBUCKVDDSRXCOMPEN, 1) |
+                _VAL2FLD(MCUCTRL_SIMOBUCK0_SIMOBUCKVDDFRXCOMPEN, 1) |
+                _VAL2FLD(MCUCTRL_SIMOBUCK0_SIMOBUCKVDDCRXCOMPEN, 1);
 
-          //
-          // Apply specific trim optimization for SIMOBUCK.
-          //
+            //
+            // Apollo4 RevB specific power optimizations.
+            //
+            MCUCTRL->SIMOBUCK15_b.SIMOBUCKZXCOMPOFFSETTRIM = 0;
+            MCUCTRL->SIMOBUCK7_b.SIMOBUCKZXCOMPZXTRIM      = 0;
 
-          //
-          // Set zero crossing for comparator to best value.
-          //
-          MCUCTRL->SIMOBUCK15_b.ZXCOMPOFFSETTRIM = 0;
-          MCUCTRL->SIMOBUCK7_b.ZXCOMPZXTRIM      = 0;
+            TrimVersionGet(&ui32TrimVer);
+            bDoVDDCboost = ( APOLLO4_GE_B1  && (ui32TrimVer >= 6) ) ? true : false;
 
-          //
-          // Set Set VDDC active low and high TON trim.
-          //
-          MCUCTRL->SIMOBUCK2_b.SIMOBUCKVDDCACTLOWTONTRIM     = 0xA;
-          MCUCTRL->SIMOBUCK2_b.SIMOBUCKVDDCACTHIGHTONTRIM    = 0xA;
+            if ( bDoVDDCboost )
+            {
+                if ( !g_bVDDCbuckboosted )
+                {
+                    //
+                    // Only 1 VDDC boost per purchase please.
+                    //
+                    g_bVDDCbuckboosted = true;
 
-          //
-          // Set VDDF active low and high TON trim.
-          //
-          MCUCTRL->SIMOBUCK7_b.VDDFACTLOWTONTRIM             = 0xF;
-          MCUCTRL->SIMOBUCK6_b.SIMOBUCKVDDFACTHIGHTONTRIM    = 0xF;
+                    //
+                    // Get current trim
+                    //
+                    ui32VDDCtrim = MCUCTRL->VREFGEN2_b.TVRGVREFTRIM;
 
-          //
-          // Set VDDS active low and high TON trim.
-          //
-          MCUCTRL->SIMOBUCK9_b.SIMOBUCKVDDSACTLOWTONTRIM     = 0xF;
-          MCUCTRL->SIMOBUCK9_b.SIMOBUCKVDDSACTHIGHTONTRIM    = 0xF;
+                    if ( g_ui32origSimobuckVDDCtrim == 0xFFFFFFFF )
+                    {
+                        //
+                        // Save the original value the very first time.
+                        //
+                        g_ui32origSimobuckVDDCtrim = ui32VDDCtrim;
+                    }
 
-          //
-          // Set the VDDS LP and VDDF LP trim values to same values.
-          //
-          MCUCTRL->SIMOBUCK13_b.SIMOBUCKLPTRIMVDDS = MCUCTRL->SIMOBUCK12_b.LPTRIMVDDF;
+                    //
+                    // Increase VDDC up by 24 steps (~40mv), or max it out.
+                    //
+                    MCUCTRL->SIMOBUCK15_b.SIMOBUCKTRIMLATCHOVER = 1;
+                    ui32VDDCtrim = (ui32VDDCtrim <= (MAX_VDDCTRIM - 24)) ?
+                                   (ui32VDDCtrim + 24) : MAX_VDDCTRIM;
 
-          //
-          // Enable VDDF to VDDS short to increase load cap (2.2uF + 2.2uF).
-          //
-          MCUCTRL->PWRSW1_b.SHORTVDDFVDDSORVAL  = 1;
-          MCUCTRL->PWRSW1_b.SHORTVDDFVDDSOREN   = 1;
+                    AM_CRITICAL_BEGIN
+                    MCUCTRL->VREFGEN2_b.TVRGVREFTRIM = ui32VDDCtrim;
 
-          //
-          // Enable VDDC, VDDF, and VDDS.
-          //
-          MCUCTRL->SIMOBUCK0 =
-                _VAL2FLD(MCUCTRL_SIMOBUCK0_VDDSRXCOMPEN, 1) |
-                _VAL2FLD(MCUCTRL_SIMOBUCK0_VDDFRXCOMPEN, 1) |
-                _VAL2FLD(MCUCTRL_SIMOBUCK0_VDDCRXCOMPEN, 1);
+                    //
+                    // Delay to give voltage supply some time to transition to the new level
+                    //
+                    am_hal_delay_us(AM_HAL_PWRCTRL_VDDC_BOOST_DELAY);
+                    AM_CRITICAL_END
+                }
+            }
 
-          //
-          // Set SIMOBUCK clock.
-          //
-          MCUCTRL->SIMOBUCK1_b.SIMOBUCKTONCLKTRIM       = 0;
-          MCUCTRL->SIMOBUCK1_b.SIMOBUCKRXCLKACTTRIM     = 1;
-
-
-          //
-          // Perform adjustments to voltage trims to ensure proper functionality.
-          //
-          ui32ReturnStatus = vddc_vddf_boost();
-          if (AM_HAL_STATUS_SUCCESS != ui32ReturnStatus)
-          {
-              return ui32ReturnStatus;
-          }
-
-
-
-#if AM_HAL_PWRCTL_KEEP_ANA_ACTIVE_IN_DS
-
-          if ( APOLLO4_GE_B1 )
-          {
-              //
-              // Keep the ANALDO and SIMOBUCK during DeepSleep.
-              //
-              //
-              // Check if the patch has been applied to make the ACRG adjustments, otherwise return an error.
-              uint32_t ui32PatchTracker;
-              uint32_t ui32Ret = am_hal_mram_info_read(1, AM_REG_INFO1_PATCH_TRACKER0_O / 4, 1, &ui32PatchTracker);
-
-              if ( (ui32Ret == 0) && (!(ui32PatchTracker & AM_REG_INFO1_PATCH_TRACKER0_ACRG_CV_M)) )
-              {
-
-                // Keep ACRG always active.
-                // Note: this step requires INFO1 patch to open the ACRG register to customer modification.
-                //
-                MCUCTRL->ACRG_b.ACRGPWD       = 0;
-                MCUCTRL->ACRG_b.ACRGSWE       = 1;
-
-                //
-                // Keep ANALDO always active.
-                //
-                MCUCTRL->VRCTRL_b.ANALDOACTIVE      = 1;
-                MCUCTRL->VRCTRL_b.ANALDOPDNB        = 1;
-                MCUCTRL->VRCTRL_b.ANALDOOVER        = 1;
-
-                //
-                // Keep SIMOBUCK in active mode
-                //
-                MCUCTRL->VRCTRL_b.SIMOBUCKPDNB      = 1;
-                MCUCTRL->VRCTRL_b.SIMOBUCKRSTB      = 1;
-                MCUCTRL->VRCTRL_b.SIMOBUCKACTIVE    = 1;
-                MCUCTRL->VRCTRL_b.SIMOBUCKOVER      = 1;
-              }
-              else
-              {
-                ui32ReturnStatus = AM_HAL_STATUS_INVALID_OPERATION;
-              }
-          }
-#endif
-
-
-          //
-          // Enable the SIMOBUCK
-          //
-          PWRCTRL->VRCTRL_b.SIMOBUCKEN = 1;
-          break;
+            //
+            // Enable the SIMOBUCK
+            //
+            PWRCTRL->VRCTRL_b.SIMOBUCKEN = 1;
+            break;
 
 #ifdef AM_HAL_PWRCTL_CRYPTO_WA
         case AM_HAL_PWRCTRL_CONTROL_CRYPTO_POWERDOWN:

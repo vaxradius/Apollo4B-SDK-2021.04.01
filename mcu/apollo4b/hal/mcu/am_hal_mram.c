@@ -45,7 +45,7 @@
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 // POSSIBILITY OF SUCH DAMAGE.
 //
-// This is part of revision b0-release-20210111-995-g9f4c242722 of the AmbiqSuite Development Package.
+// This is part of revision b0-release-20210111-833-gc25608de46 of the AmbiqSuite Development Package.
 //
 //*****************************************************************************
 
@@ -59,42 +59,19 @@
 
 static uint32_t g_program_mram_tmc_tcycrd[] =
 {
-    0x0104f244, 0x0101f2c4, 0x604a22c3, 0x6ccb2205,
-    0x0310f043, 0x650a64cb, 0x60cb2301, 0x610a2200,
-    0x618a614a, 0x000ff000, 0xf043680b, 0x600b0308,
-    0xf022680a, 0x600a0208, 0x6d0b2209, 0x2395f362,
-    0x2206650b, 0xf3626d0b, 0x650b0304, 0xf042680a,
-    0x600a0208, 0xf023680b, 0x600b0308, 0x680b6eca,
-    0x0308f023, 0x600b0912, 0x1002ea40, 0x200560c8,
-    0xf3606d0a, 0x650a0204, 0xf0406808, 0x60080008,
-    0xf022680a, 0x600a0208, 0x6d082200, 0x2095f36f,
-    0x60ca6508, 0x6d0a2005, 0x0204f360, 0x6808650a,
-    0x0008f040, 0x680a6008, 0x0208f022, 0x2200600a,
-    0xf0206cc8, 0x64c80010, 0x4770604a,
+    0x0104F244, 0x0101F2C4, 0x604A22C3, 0x6CCB2205,
+    0x0310F043, 0x650A64CB, 0x60CB2301, 0x610A2200,
+    0x618A614A, 0x000FF000, 0xF043680B, 0x600B0308,
+    0xF022680A, 0x600A0208, 0x6D0B2209, 0x2395F362,
+    0x2206650B, 0xF3626D0B, 0x650B0304, 0xF042680A,
+    0x600A0208, 0x680B6DCA, 0x0308F023, 0x600B0912,
+    0x1002EA40, 0x200560C8, 0xF3606D0A, 0x650A0204,
+    0xF0406808, 0x60080008, 0xF022680A, 0x600A0208,
+    0x6D082200, 0x2095F36F, 0x60CA6508, 0x6D0A2005,
+    0x0204F360, 0x6808650A, 0x0008F040, 0x680A6008,
+    0x0208F022, 0x2200600A, 0xF0206CC8, 0x64C80010,
+    0x4770604A
 };
-
-static uint32_t g_recover_broken_mram_tmc_r_timer1[] =
-{
-    0x0104f244, 0x0101f2c4, 0x604820c3, 0x6cca2005,
-    0x0210f042, 0x650864ca, 0x60ca2201, 0x61082000,
-    0x61886148, 0xf042680a, 0x600a0208, 0xf0206808,
-    0x60080008, 0x6d0a2009, 0x2295f360, 0x2006650a,
-    0xf3606d0a, 0x650a0204, 0xf0406808, 0x60080008,
-    0x00a0f645, 0xf022680a, 0x600a0208, 0x0010f2c0,
-    0xf0026eca, 0x4302020f, 0x200560ca, 0xf3606d0a,
-    0x650a0204, 0xf0406808, 0x60080008, 0xf022680a,
-    0x600a0208, 0x6d082200, 0x2095f36f, 0x60ca6508,
-    0x6d0a2005, 0x0204f360, 0x6808650a, 0x0008f040,
-    0x680a6008, 0x0208f022, 0x2200600a, 0xf0206cc8,
-    0x64c80010, 0x2000604a, 0x00004770,
-};
-
-
-// SRAM functions
-typedef void (*program_mram_tmc_tcycrd_t)(uint32_t N);
-program_mram_tmc_tcycrd_t program_mram_tmc_tcycrd = (program_mram_tmc_tcycrd_t)((uint8_t *)g_program_mram_tmc_tcycrd + 1);
-typedef void (*recover_broken_mram_tmc_r_timer1_t)(void);
-recover_broken_mram_tmc_r_timer1_t recover_broken_mram_tmc_r_timer1 = (recover_broken_mram_tmc_r_timer1_t)((uint8_t *)g_recover_broken_mram_tmc_r_timer1 + 1);
 
 //*****************************************************************************
 //
@@ -103,7 +80,10 @@ recover_broken_mram_tmc_r_timer1_t recover_broken_mram_tmc_r_timer1 = (recover_b
 //*****************************************************************************
 #define MRAM_OVERRIDE()     program_mram_tmc_tcycrd(1)
 #define MRAM_REVERT()       program_mram_tmc_tcycrd(0)
-#define MRAM_RECOVER()      recover_broken_mram_tmc_r_timer1()
+
+typedef void (*program_mram_tmc_tcycrd_t)(uint32_t N);
+
+program_mram_tmc_tcycrd_t program_mram_tmc_tcycrd = (program_mram_tmc_tcycrd_t)((uint8_t *)g_program_mram_tmc_tcycrd + 1);
 
 
 //*****************************************************************************
@@ -404,22 +384,4 @@ am_hal_mram_info_read(uint32_t ui32InfoSpace,
     MRAM_REVERT();
 
     return retval;
-}
-
-//*****************************************************************************
-//
-//! @brief Initialize MRAM for DeepSleep.
-//!
-//! This function implements a workaround required for Apollo4 B0 parts in
-//! order to fix the MRAM DeepSleep config params.
-//!
-//! @param none
-//!
-//! @return 0 for success, non-zero for failure.                                                6
-//
-//*****************************************************************************
-int am_hal_mram_ds_init(void)
-{
-    MRAM_RECOVER();
-    return 0;
 }
