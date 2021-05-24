@@ -125,6 +125,12 @@ main(void)
   // Configure the board for low power.
   //
   am_bsp_low_power_init();
+#if defined (AM_PART_APOLLO4B)
+    //
+    // Turn off crypto
+    //
+    am_hal_pwrctrl_control(AM_HAL_PWRCTRL_CONTROL_CRYPTO_POWERDOWN, NULL);
+#endif
 
   //
   // Turn off unneeded memory
