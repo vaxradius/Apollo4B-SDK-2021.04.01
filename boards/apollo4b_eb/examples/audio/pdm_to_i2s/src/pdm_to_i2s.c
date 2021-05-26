@@ -672,6 +672,38 @@ am_dspi2s0_isr()
 }
 
 
+void MCLK_set_up(void)
+{
+    //
+    // Configure the necessary pins.
+    //
+    am_hal_gpio_pincfg_t sPinCfg =
+    {
+      .GP.cfg_b.eGPOutCfg = 1,
+      .GP.cfg_b.ePullup   = 0
+    };
+
+    sPinCfg.GP.cfg_b.uFuncSel = AM_HAL_PIN_71_CLKOUT;
+    am_hal_gpio_pinconfig(71, sPinCfg);
+
+	//
+	// Disable before changing the clock
+	//
+	CLKGEN->CLKOUT_b.CKEN = 0;
+
+	//
+	// Set the new clock select
+	//
+	CLKGEN->CLKOUT_b.CKSEL = CLKGEN_CLKOUT_CKSEL_HFRC_DIV8;
+	
+
+	//
+	// Enable as requested.
+	//
+	CLKGEN->CLKOUT_b.CKEN = 1;
+
+}
+
 //*****************************************************************************
 //
 // Main
@@ -682,6 +714,8 @@ main(void)
 {
 
     am_bsp_low_power_init();
+
+	MCLK_set_up();
 
     ping_pang_init();
 
