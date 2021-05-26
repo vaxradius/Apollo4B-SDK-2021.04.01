@@ -152,7 +152,8 @@ am_hal_pdm_config_t g_sPdmConfig =
     //  16.00KHz 24bit Sampling:
     //      DecimationRate = 48
     //
-    .ePDMClkSpeed = AM_HAL_PDM_CLK_HFRC2ADJ_24_576MHZ,
+    //.ePDMClkSpeed = AM_HAL_PDM_CLK_HFRC2ADJ_24_576MHZ,
+    .ePDMClkSpeed = AM_HAL_PDM_CLK_HFRC_24MHZ,
     .eClkDivider = AM_HAL_PDM_MCLKDIV_1,
     .ePDMAClkOutDivder = AM_HAL_PDM_PDMA_CLKO_DIV7,
     .ui32DecimationRate = 48,
@@ -244,7 +245,6 @@ void *I2SHandle;
 static am_hal_i2s_io_signal_t g_sI2SIOConfig =
 {
   .eFyncCpol = AM_HAL_I2S_IO_FSYNC_CPOL_HIGH,
-
   .eTxCpol = AM_HAL_I2S_IO_TX_CPOL_FALLING,
   .eRxCpol = AM_HAL_I2S_IO_RX_CPOL_RISING,
 };
@@ -253,7 +253,7 @@ static am_hal_i2s_io_signal_t g_sI2SIOConfig =
 static am_hal_i2s_data_format_t g_sI2SDataConfig =
 {
   .ePhase = AM_HAL_I2S_DATA_PHASE_SINGLE,
-  .eDataDelay = 0x1,
+  //.eDataDelay = 0x1,
   .eDataJust = AM_HAL_I2S_DATA_JUSTIFIED_LEFT,
 
   .eChannelLenPhase1 = AM_HAL_I2S_FRAME_32BITS_WDLEN, //32bits
@@ -269,19 +269,13 @@ static am_hal_i2s_data_format_t g_sI2SDataConfig =
 //*****************************************************************************
 static am_hal_i2s_config_t g_sI2SConfig =
 {
-  .eClock               = eAM_HAL_I2S_CLKSEL_XTHS_1MHz, //eAM_HAL_I2S_CLKSEL_HFRC_6MHz,
-  .eDiv3                = 0,
-#if DATA_VERIFY
-  .eASRC                = 0,
-#else
-  .eASRC                = 0,
-#endif
-  .eMode                = AM_HAL_I2S_IO_MODE_SLAVE,
-  .eXfer                = AM_HAL_I2S_XFER_TX,
-  .ui32ChnNumber        = 2,
-
-  .eData                = &g_sI2SDataConfig,
-  .eIO                  = &g_sI2SIOConfig
+    .eClock               = eAM_HAL_I2S_CLKSEL_HFRC_3MHz,
+    .eDiv3                = 1,
+    .eMode                = AM_HAL_I2S_IO_MODE_MASTER,
+    .eXfer                = AM_HAL_I2S_XFER_RXTX,
+    .ui32ChnNumber        = 2,
+    .eData                = &g_sI2SDataConfig,
+    .eIO                  = &g_sI2SIOConfig
 };
 
 // Transfer setting.
@@ -600,15 +594,14 @@ i2s_init(void)
       .GP.cfg_b.ePullup   = 0
     };
 
-    sPinCfg.GP.cfg_b.uFuncSel = I2S_DATA_OUT_GPIO_FUNC;
-    am_hal_gpio_pinconfig(I2S_DATA_OUT_GPIO_PIN, sPinCfg);
-    sPinCfg.GP.cfg_b.uFuncSel = I2S_DATA_IN_GPIO_FUNC;
-    am_hal_gpio_pinconfig(I2S_DATA_IN_GPIO_PIN, sPinCfg);
-
-    sPinCfg.GP.cfg_b.uFuncSel = I2S_CLK_GPIO_FUNC;
-    am_hal_gpio_pinconfig(I2S_CLK_GPIO_PIN, sPinCfg);
-    sPinCfg.GP.cfg_b.uFuncSel = I2S_WS_GPIO_FUNC;
-    am_hal_gpio_pinconfig(I2S_WS_GPIO_PIN, sPinCfg);
+    sPinCfg.GP.cfg_b.uFuncSel = AM_HAL_PIN_12_I2S0_SDOUT;
+    am_hal_gpio_pinconfig(12, sPinCfg);
+	
+    sPinCfg.GP.cfg_b.uFuncSel = AM_HAL_PIN_11_I2S0_CLK;
+    am_hal_gpio_pinconfig(11, sPinCfg);
+	
+    sPinCfg.GP.cfg_b.uFuncSel = AM_HAL_PIN_13_I2S0_WS;
+    am_hal_gpio_pinconfig(13, sPinCfg);
 
     am_hal_i2s_initialize(I2S_MODULE, &I2SHandle);
     am_hal_i2s_power_control(I2SHandle, AM_HAL_I2S_POWER_ON, false);
