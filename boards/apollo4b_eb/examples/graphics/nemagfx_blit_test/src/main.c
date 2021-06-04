@@ -97,12 +97,22 @@ main(void)
     }
     am_hal_pwrctrl_periph_enable(AM_HAL_PWRCTRL_PERIPH_GFX);
     am_hal_pwrctrl_periph_enable(AM_HAL_PWRCTRL_PERIPH_DISP);
+		
+		//
+    // Initialize the printf interface for ITM/SWO output.
+    //
+    am_bsp_itm_printf_enable();
+
+    //
+    // Enable the ITM.
+    //
+    am_hal_itm_enable();
     //
     // Disable clock gating for initial testing (FIXME).
     //
     //AM_REGVAL(0x400a01a8) = 0xffc00000;
 #ifdef BAREMETAL
-    nemadc_spi_test();
+    nemagfx_blit_test();
 #else //!< BAREMETAL
     //
     // Run the application.
