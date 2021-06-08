@@ -217,9 +217,12 @@ nemagfx_blit_test(void)
     uint16_t ui16MinX, ui16MinY;
     uint32_t ui32SampleType;
     uint32_t ui32TexColor;
-	
-	
+
+	am_util_stdio_printf("\nnema_init+\n");
 	nema_init();
+	am_util_stdio_printf("nema_init-\n");
+
+	am_util_stdio_printf("nemadc_init+\n");
     //
     // Initialize NemaDC
     //
@@ -237,6 +240,7 @@ nemagfx_blit_test(void)
             return -3;
         }
     }
+	am_util_stdio_printf("nemadc_init-\n");
     //
     // Assign a fixed value to display type.
     //
@@ -246,9 +250,10 @@ nemagfx_blit_test(void)
     //
     ui16MinX = (FB_RESX >= ui16PanelResX)? 0 : ((ui16PanelResX - FB_RESX) >> 2)  << 1;
     ui16MinY = (FB_RESY >= ui16PanelResY)? 0 : ((ui16PanelResY - FB_RESY) >> 2)  << 1;
-
+	am_util_stdio_printf("am_devices_nemadc_rm67162_init+\n");
     am_devices_nemadc_rm67162_init(MIPICFG_SPI4, MIPICFG_1RGB888_OPT0, FB_RESX, FB_RESY, ui16MinX, ui16MinY);
-		
+	am_util_stdio_printf("am_devices_nemadc_rm67162_init-\n");
+
     load_objects();
 
     nemadc_set_layer(0, &dc_layer);

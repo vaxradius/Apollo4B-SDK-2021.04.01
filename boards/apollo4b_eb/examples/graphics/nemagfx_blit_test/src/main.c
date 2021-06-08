@@ -63,6 +63,18 @@ main(void)
     am_bsp_external_pwr_on();
     am_util_delay_ms(100);
     am_bsp_low_power_init();
+
+
+	//
+    // Initialize the printf interface for ITM/SWO output.
+    //
+    am_bsp_itm_printf_enable();
+
+    //
+    // Enable the ITM.
+    //
+    am_hal_itm_enable();
+
     //
     // Global interrupt enable
     //
@@ -92,21 +104,14 @@ main(void)
     }
     else
     {
-        am_hal_clkgen_control(AM_HAL_CLKGEN_CONTROL_DISPCLKSEL_HFRC96, NULL);
+		am_hal_clkgen_control(AM_HAL_CLKGEN_CONTROL_DISPCLKSEL_HFRC96, NULL);
         am_hal_clkgen_control(AM_HAL_CLKGEN_CONTROL_DCCLK_ENABLE, NULL);
     }
+	am_util_stdio_printf("\nPWRCTRL GFX & DISP Enable\n");
     am_hal_pwrctrl_periph_enable(AM_HAL_PWRCTRL_PERIPH_GFX);
     am_hal_pwrctrl_periph_enable(AM_HAL_PWRCTRL_PERIPH_DISP);
 		
-		//
-    // Initialize the printf interface for ITM/SWO output.
-    //
-    am_bsp_itm_printf_enable();
 
-    //
-    // Enable the ITM.
-    //
-    am_hal_itm_enable();
     //
     // Disable clock gating for initial testing (FIXME).
     //
