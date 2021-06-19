@@ -238,10 +238,10 @@ void serial_data_write(uint8_t* pui8Data, uint32_t ui32Length)
     uint32_t ui32BytesTransferred = 0;
     am_hal_uart_transfer_t sWrite =
     {
-        .eType = AM_HAL_UART_BLOCKING_WRITE,
+        .eType = AM_HAL_UART_NONBLOCKING_WRITE,
         .pui8Data = pui8Data,
         .ui32NumBytes = ui32Length,
-        .ui32TimeoutMs = AM_HAL_UART_WAIT_FOREVER,
+        .ui32TimeoutMs = 0,
         .pui32BytesTransferred = &ui32BytesTransferred,
     };
 
@@ -269,15 +269,6 @@ void serial_irq_disable(void)
     NVIC_DisableIRQ((IRQn_Type)(UART0_IRQn + UART_HCI_BRIDGE));
 }
 
-//*****************************************************************************
-//
-// Serial task to adapt different interface, do nothing for UART.
-//
-//*****************************************************************************
-void serial_task(void)
-{
-
-}
 
 //*****************************************************************************
 //
@@ -286,6 +277,7 @@ void serial_task(void)
 //*****************************************************************************
 int main(void)
 {
+	uint32_t ui32Critical=0; 
 	serial_interface_init();
 
 	serial_irq_enable();
@@ -299,6 +291,21 @@ int main(void)
 
     am_util_stdio_printf("Uart loopback Example\n");
 
-	serial_task();
+	while (1)
+    {
+
+		if(g_ui32SerialRxIndex)
+		{
+			uint8_t * pData = (uint8_t *) &(g_psWriteData.bytes[0]);
+			ui32Critical = am_hal_interrupt_master_disable(); //Start a critical section.
+			serial_data_write(pData, g_ui32SerialRxIndex);
+			g_ui32SerialRxIndex = 0;
+			am_hal_interrupt_master_set(ui32Critical); //Exit the critical section.
+		}
+		//
+        // Go to Deep Sleep and stay there.
+        //
+        am_hal_sysctrl_sleep(AM_HAL_SYSCTRL_SLEEP_NORMAL);
+    }
 }
 
