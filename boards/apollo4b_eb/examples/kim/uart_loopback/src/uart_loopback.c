@@ -1,16 +1,5 @@
 //*****************************************************************************
 //
-//! @file uart_ble_bridge.c
-//!
-//! @brief Converts UART HCI commands to SPI.
-//!
-//! This exapmle can be used as a way to communicate between a host chip using
-//! UART HCI and the BLE module inside Apollo3.
-//
-//*****************************************************************************
-
-//*****************************************************************************
-//
 // Copyright (c) 2021, Ambiq Micro, Inc.
 // All rights reserved.
 //
@@ -51,9 +40,6 @@
 #include <string.h>
 #include <stdbool.h>
 #include "am_util.h"
-#include "am_util_ble_cooper.h"
-#include "wsf_types.h"
-#include "dtm_api.h"
 #include "am_bsp.h"
 
 //*****************************************************************************
@@ -61,7 +47,7 @@
 // Macro Definition.
 //
 //*****************************************************************************
-#define UART_HCI_BRIDGE                 (0)
+#define UART_HCI_BRIDGE                 (2)
 #define MAX_UART_PACKET_SIZE            (2048)
 #define UART_RX_TIMEOUT_MS              (1)
 #define MAX_READ_BYTES                  (23)
@@ -74,20 +60,23 @@
 void *g_pvUART;
 uint8_t g_pui8UARTTXBuffer[MAX_UART_PACKET_SIZE];
 
-//*****************************************************************************
-//
-// External variables declaration.
-//
-//*****************************************************************************
-extern am_rw_buffer(1024) g_psWriteData;
+#define am_uart_buffer(A)                                                   \
+union                                                                   \
+  {                                                                       \
+    uint32_t words[(A + 3) >> 2];                                       \
+      uint8_t bytes[A];                                                   \
+  }
+
+am_uart_buffer(1024) g_psWriteData;
+//am_uart_buffer(1024) g_psReadData;
 
 //*****************************************************************************
 //
-// External function declaration.
+// function declaration.
 //
 //*****************************************************************************
-extern volatile uint32_t g_ui32SerialRxIndex;
-extern uint16_t serial_rx_hci_state_machine(uint8_t *pBuf, uint16_t len);
+volatile uint32_t g_ui32SerialRxIndex = 0;
+void serial_data_read(uint8_t* pui8Data, uint32_t* ui32Length);
 
 //*****************************************************************************
 //
@@ -97,7 +86,7 @@ extern uint16_t serial_rx_hci_state_machine(uint8_t *pBuf, uint16_t len);
 #if UART_HCI_BRIDGE == 0
 void am_uart_isr(void)
 #else
-void am_uart1_isr(void)
+void am_uart2_isr(void)
 #endif //UART_HCI_BRIDGE == 0
 {
     uint32_t ui32Status;
@@ -117,10 +106,47 @@ void am_uart1_isr(void)
     {
         uint32_t ui32BytesRead;
         serial_data_read(pData, &ui32BytesRead);
-        (void)serial_rx_hci_state_machine(pData, ui32BytesRead);
         g_ui32SerialRxIndex += ui32BytesRead;
     }
 }
+
+am_hal_gpio_pincfg_t g_AM_GPIO13_COM_UART2_TX =
+{
+    .GP.cfg_b.uFuncSel             = AM_HAL_PIN_13_UART2TX,
+    .GP.cfg_b.eGPInput             = AM_HAL_GPIO_PIN_INPUT_NONE,
+    .GP.cfg_b.eGPRdZero            = AM_HAL_GPIO_PIN_RDZERO_READPIN,
+    .GP.cfg_b.eIntDir              = AM_HAL_GPIO_PIN_INTDIR_NONE,
+    .GP.cfg_b.eGPOutCfg            = AM_HAL_GPIO_PIN_OUTCFG_DISABLE,
+    .GP.cfg_b.eDriveStrength       = AM_HAL_GPIO_PIN_DRIVESTRENGTH_0P1X,
+    .GP.cfg_b.uSlewRate            = 0,
+    .GP.cfg_b.ePullup              = AM_HAL_GPIO_PIN_PULLUP_NONE,
+    .GP.cfg_b.uNCE                 = 0,
+    .GP.cfg_b.eCEpol               = AM_HAL_GPIO_PIN_CEPOL_ACTIVELOW,
+    .GP.cfg_b.uRsvd_0              = 0,
+    .GP.cfg_b.ePowerSw             = AM_HAL_GPIO_PIN_POWERSW_NONE,
+    .GP.cfg_b.eForceInputEn        = AM_HAL_GPIO_PIN_FORCEEN_NONE,
+    .GP.cfg_b.eForceOutputEn       = AM_HAL_GPIO_PIN_FORCEEN_NONE,
+    .GP.cfg_b.uRsvd_1              = 0,
+};
+
+am_hal_gpio_pincfg_t g_AM_GPIO11_COM_UART2_RX =
+{
+    .GP.cfg_b.uFuncSel             = AM_HAL_PIN_11_UART2RX,
+    .GP.cfg_b.eGPInput             = AM_HAL_GPIO_PIN_INPUT_NONE,
+    .GP.cfg_b.eGPRdZero            = AM_HAL_GPIO_PIN_RDZERO_READPIN,
+    .GP.cfg_b.eIntDir              = AM_HAL_GPIO_PIN_INTDIR_NONE,
+    .GP.cfg_b.eGPOutCfg            = AM_HAL_GPIO_PIN_OUTCFG_DISABLE,
+    .GP.cfg_b.eDriveStrength       = AM_HAL_GPIO_PIN_DRIVESTRENGTH_0P1X,
+    .GP.cfg_b.uSlewRate            = 0,
+    .GP.cfg_b.ePullup              = AM_HAL_GPIO_PIN_PULLUP_NONE,
+    .GP.cfg_b.uNCE                 = 0,
+    .GP.cfg_b.eCEpol               = AM_HAL_GPIO_PIN_CEPOL_ACTIVELOW,
+    .GP.cfg_b.uRsvd_0              = 0,
+    .GP.cfg_b.ePowerSw             = AM_HAL_GPIO_PIN_POWERSW_NONE,
+    .GP.cfg_b.eForceInputEn        = AM_HAL_GPIO_PIN_FORCEEN_NONE,
+    .GP.cfg_b.eForceOutputEn       = AM_HAL_GPIO_PIN_FORCEEN_NONE,
+    .GP.cfg_b.uRsvd_1              = 0,
+};
 
 //*****************************************************************************
 //
@@ -129,8 +155,6 @@ void am_uart1_isr(void)
 //*****************************************************************************
 void serial_interface_init(void)
 {
-    am_util_stdio_printf("Apollo4 UART to SPI Bridge\n");
-
     //
     // Start the UART.
     //
@@ -155,8 +179,8 @@ void serial_interface_init(void)
     am_hal_uart_power_control(g_pvUART, AM_HAL_SYSCTRL_WAKE, false);
     am_hal_uart_configure(g_pvUART, &sUartConfig);
     am_hal_uart_buffer_configure(g_pvUART, g_pui8UARTTXBuffer, sizeof(g_pui8UARTTXBuffer), NULL, 0);
-    am_hal_gpio_pinconfig(AM_BSP_GPIO_COM_UART_TX, g_AM_BSP_GPIO_COM_UART_TX);
-    am_hal_gpio_pinconfig(AM_BSP_GPIO_COM_UART_RX, g_AM_BSP_GPIO_COM_UART_RX);
+    am_hal_gpio_pinconfig(13, g_AM_GPIO13_COM_UART2_TX);
+    am_hal_gpio_pinconfig(11, g_AM_GPIO11_COM_UART2_RX);
     //
     // Make sure to enable the interrupts for RX, since the HAL doesn't already
     // know we intend to use them.
@@ -179,8 +203,8 @@ void serial_interface_deinit(void)
     sPinCfg.GP.cfg_b.eGPOutCfg = AM_HAL_GPIO_PIN_OUTCFG_DISABLE;
     sPinCfg.GP.cfg_b.eGPInput  = AM_HAL_GPIO_PIN_INPUT_ENABLE;
     sPinCfg.GP.cfg_b.ePullup   = AM_HAL_GPIO_PIN_PULLUP_100K;
-    am_hal_gpio_pinconfig(AM_BSP_GPIO_COM_UART_TX, sPinCfg);
-    am_hal_gpio_pinconfig(AM_BSP_GPIO_COM_UART_RX, sPinCfg);
+    am_hal_gpio_pinconfig(13, sPinCfg);
+    am_hal_gpio_pinconfig(11, sPinCfg);
 
     am_hal_uart_deinitialize(g_pvUART);
 }
@@ -262,7 +286,19 @@ void serial_task(void)
 //*****************************************************************************
 int main(void)
 {
-    dtm_init();
-    dtm_process();
+	serial_interface_init();
+
+	serial_irq_enable();
+
+	am_hal_interrupt_master_enable();
+
+	//
+    // Initialize the printf interface for UART output.
+    //
+    am_bsp_uart_printf_enable();
+
+    am_util_stdio_printf("Uart loopback Example\n");
+
+	serial_task();
 }
 
