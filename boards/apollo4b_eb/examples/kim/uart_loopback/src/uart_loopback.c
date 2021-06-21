@@ -47,7 +47,7 @@
 // Macro Definition.
 //
 //*****************************************************************************
-#define UART_HCI_BRIDGE                 (2)
+#define UART_HCI_BRIDGE                 (3)
 #define MAX_UART_PACKET_SIZE            (2048)
 #define UART_RX_TIMEOUT_MS              (1)
 #define MAX_READ_BYTES                  (23)
@@ -86,7 +86,7 @@ void serial_data_read(uint8_t* pui8Data, uint32_t* ui32Length);
 #if UART_HCI_BRIDGE == 0
 void am_uart_isr(void)
 #else
-void am_uart2_isr(void)
+void am_uart3_isr(void)
 #endif //UART_HCI_BRIDGE == 0
 {
     uint32_t ui32Status;
@@ -112,7 +112,7 @@ void am_uart2_isr(void)
 
 am_hal_gpio_pincfg_t g_AM_GPIO13_COM_UART2_TX =
 {
-    .GP.cfg_b.uFuncSel             = AM_HAL_PIN_13_UART2TX,
+    .GP.cfg_b.uFuncSel             = AM_HAL_PIN_13_UART3TX,
     .GP.cfg_b.eGPInput             = AM_HAL_GPIO_PIN_INPUT_NONE,
     .GP.cfg_b.eGPRdZero            = AM_HAL_GPIO_PIN_RDZERO_READPIN,
     .GP.cfg_b.eIntDir              = AM_HAL_GPIO_PIN_INTDIR_NONE,
@@ -131,7 +131,7 @@ am_hal_gpio_pincfg_t g_AM_GPIO13_COM_UART2_TX =
 
 am_hal_gpio_pincfg_t g_AM_GPIO11_COM_UART2_RX =
 {
-    .GP.cfg_b.uFuncSel             = AM_HAL_PIN_11_UART2RX,
+    .GP.cfg_b.uFuncSel             = AM_HAL_PIN_11_UART3RX,
     .GP.cfg_b.eGPInput             = AM_HAL_GPIO_PIN_INPUT_NONE,
     .GP.cfg_b.eGPRdZero            = AM_HAL_GPIO_PIN_RDZERO_READPIN,
     .GP.cfg_b.eIntDir              = AM_HAL_GPIO_PIN_INTDIR_NONE,
@@ -289,7 +289,7 @@ int main(void)
     //
     am_bsp_uart_printf_enable();
 
-    am_util_stdio_printf("Uart loopback Example\n");
+    am_util_stdio_printf("Uart3 loopback Example\n");
 
 	while (1)
     {
