@@ -85,6 +85,54 @@ void *g_pvHciSpiHandle;
 #define APOLLO4_SIP
 #define AM_DEVICES_COOPER_RESET_PIN     42
 
+uint8_t bRTCflag = 0;
+
+void
+am_rtc_isr(void)
+{
+    //
+    // Clear the RTC alarm interrupt.
+    //
+    am_hal_rtc_interrupt_clear(AM_HAL_RTC_INT_ALM);
+	bRTCflag = 1;
+}
+
+void init_RTC(void)
+{
+    //
+    // Enable the XT for the RTC.
+    //
+    am_hal_clkgen_control(AM_HAL_CLKGEN_CONTROL_XTAL_START, 0);
+
+    //
+    // Select XT for RTC clock source
+    //
+    am_hal_rtc_osc_select(AM_HAL_RTC_OSC_XT);
+
+    //
+    // Enable the RTC.
+    //
+    am_hal_rtc_osc_enable();
+
+	//
+    // Set the alarm repeat interval to be every second.
+    //
+    am_hal_rtc_alarm_interval_set(AM_HAL_RTC_ALM_RPT_SEC);
+
+    //
+    // Clear the RTC alarm interrupt.
+    //
+    am_hal_rtc_interrupt_clear(AM_HAL_RTC_INT_ALM);
+
+    //
+    // Enable the RTC alarm interrupt.
+    //
+    am_hal_rtc_interrupt_enable(AM_HAL_RTC_INT_ALM);
+
+	NVIC_SetPriority(RTC_IRQn, AM_IRQ_PRIORITY_DEFAULT);
+    NVIC_EnableIRQ(RTC_IRQn);
+	
+}
 
 //*****************************************************************************
 //
@@ -100,7 +148,7 @@ enter_deepsleep(void)
       .eCacheCfg    = AM_HAL_PWRCTRL_CACHE_NONE,
       .bRetainCache = false,
       .eDTCMCfg     = AM_HAL_PWRCTRL_DTCM_128K,
-      .eRetainDTCM  = AM_HAL_PWRCTRL_DTCM_8K,
+      .eRetainDTCM  = AM_HAL_PWRCTRL_DTCM_128K,
       .bEnableNVM0  = true,
       .bRetainNVM0  = false
     };
@@ -128,7 +176,7 @@ enter_deepsleep(void)
     //
     // Disable XTAL in deepsleep
     //
-    am_hal_pwrctrl_control(AM_HAL_PWRCTRL_CONTROL_XTAL_PWDN_DEEPSLEEP, 0);
+    //am_hal_pwrctrl_control(AM_HAL_PWRCTRL_CONTROL_XTAL_PWDN_DEEPSLEEP, 0);
 
     //
     // Update memory configuration to minimum.
@@ -136,10 +184,23 @@ enter_deepsleep(void)
     am_hal_pwrctrl_mcu_memory_config(&McuMemCfg);
     am_hal_pwrctrl_sram_config(&SRAMMemCfg);
 
+	init_RTC();
+
+	//
+    // Enable interrupts to the core.
+    //
+    am_hal_interrupt_master_enable();
+
 
     while (1)
     {
-        //
+		if(bRTCflag == 1)
+		{
+			bRTCflag=0;
+			HciReadLocalVerInfoCmd();
+		}
+
+		//
         // Go to Deep Sleep and stay there.
         //
         am_hal_sysctrl_sleep(AM_HAL_SYSCTRL_SLEEP_DEEP);
@@ -157,7 +218,6 @@ main(void)
 {
 	uint32_t ui32Status;
 	am_devices_cooper_config_t stCooperConfig;
-	stCooperConfig.ui32ClockFreq = COOPER_IOM_FREQ;
 	stCooperConfig.pNBTxnBuf = DMATCBBuffer;
 	stCooperConfig.ui32NBTxnBufLength = sizeof(DMATCBBuffer) / 4;
 
@@ -175,7 +235,6 @@ main(void)
         while(1);
     }
 
-
 	while(am_devices_cooper_clkreq_read(g_IomDevHdl))
 	{
 
@@ -183,17 +242,11 @@ main(void)
 
 	am_util_delay_ms(100); // For cooper sleep(idle) abnormal part , that needs at least 40ms
 
-#if (!defined(COOPER_QFN))
-    am_hal_gpio_pinconfig(AM_BSP_GPIO_IOM4_CS,   am_hal_gpio_pincfg_disabled);// For cooper sleep(idle) abnormal part
-#else
-	am_hal_gpio_pinconfig(AM_BSP_GPIO_IOM0_CS,   am_hal_gpio_pincfg_disabled);// For cooper sleep(idle) abnormal part
-#endif
-
-	 am_hal_mcuctrl_control(AM_HAL_MCUCTRL_CONTROL_EXTCLK32K_DISABLE, 0);    
-	 am_hal_mcuctrl_control(AM_HAL_MCUCTRL_CONTROL_EXTCLK32M_DISABLE, 0);             
-	 //am_hal_pwrctrl_control(AM_HAL_PWRCTRL_CONTROL_CRYPTO_POWERDOWN, 0);    //    // Disable all peripherals    //    
-	 //am_hal_pwrctrl_control(AM_HAL_PWRCTRL_CONTROL_DIS_PERIPHS_ALL, 0);    //    // Disable XTAL in deepsleep    //    
-	 am_hal_pwrctrl_control(AM_HAL_PWRCTRL_CONTROL_XTAL_PWDN_DEEPSLEEP, 0);
+	//am_hal_mcuctrl_control(AM_HAL_MCUCTRL_CONTROL_EXTCLK32K_DISABLE, 0);    
+	//am_hal_mcuctrl_control(AM_HAL_MCUCTRL_CONTROL_EXTCLK32M_DISABLE, 0);             
+	am_hal_pwrctrl_control(AM_HAL_PWRCTRL_CONTROL_CRYPTO_POWERDOWN, 0);    //    // Disable all peripherals    //    
+	am_hal_pwrctrl_control(AM_HAL_PWRCTRL_CONTROL_DIS_PERIPHS_ALL, 0);    //      
+	//am_hal_pwrctrl_control(AM_HAL_PWRCTRL_CONTROL_XTAL_PWDN_DEEPSLEEP, 0);// Disable XTAL in deepsleep    //  
 
 
 
