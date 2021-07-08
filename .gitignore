@@ -37,3 +37,7 @@
 *.wsdt
 *.jlink
 *.dbgdt
+*.hex
+*.size
+*.ewt
+*.reggroups
