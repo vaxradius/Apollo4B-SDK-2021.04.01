@@ -694,7 +694,7 @@ void MCLK_set_up(void)
 	//
 	// Set the new clock select
 	//
-	CLKGEN->CLKOUT_b.CKSEL = CLKGEN_CLKOUT_CKSEL_HFRC_DIV8;
+	CLKGEN->CLKOUT_b.CKSEL = CLKGEN_CLKOUT_CKSEL_HFRC_DIV4;
 	
 
 	//
